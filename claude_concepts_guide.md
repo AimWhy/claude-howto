@@ -2810,7 +2810,7 @@ Hooks are event-driven shell commands that execute automatically in response to 
 
 ### Hook Events
 
-Claude Code supports **29 hook events** across five hook types (command, http, mcp_tool, prompt, agent):
+Claude Code supports **31 hook events** across five hook types (command, http, mcp_tool, prompt, agent):
 
 | Hook Event | Trigger | Use Cases |
 |------------|---------|-----------|
@@ -2826,6 +2826,7 @@ Claude Code supports **29 hook events** across five hook types (command, http, m
 | **PostToolUseFailure** | Tool execution fails | Error handling, logging |
 | **PostToolBatch** | After a batch of tool uses completes | Aggregate reporting, batched validation |
 | **Notification** | Notification sent | Alerting, external integrations |
+| **MessageDisplay** | While assistant message text is displayed | Transform or hide displayed message text |
 | **SubagentStart** | Subagent spawned | Context injection, initialization |
 | **SubagentStop** | Subagent finishes | Result validation, logging |
 | **Stop** | Claude finishes responding | Summary generation, cleanup tasks |
@@ -2835,6 +2836,7 @@ Claude Code supports **29 hook events** across five hook types (command, http, m
 | **TaskCreated** | Task created via TaskCreate | Task tracking, logging |
 | **ConfigChange** | Config file changes | Validation, propagation |
 | **CwdChanged** | Working directory changes | Directory-specific setup |
+| **DirectoryAdded** | New working directory registered mid-session via `/add-dir` or the SDK `register_repo_root` control request | Set up tooling for a newly added directory |
 | **FileChanged** | Watched file changes | File monitoring, rebuild triggers |
 | **PreCompact** | Before context compaction | State preservation |
 | **PostCompact** | After compaction completes | Post-compact actions |
@@ -3129,15 +3131,16 @@ Claude Code supports the following models with adaptive reasoning effort:
 
 | Model | Context Window | Effort Levels | Default Effort (Claude Code) |
 |-------|----------------|---------------|------------------------------|
-| Claude Sonnet 5 | 1M tokens (native) | `low`, `medium`, `high`, `max` | `high` — default model for Pro/Team Standard/Enterprise since v2.1.197 |
+| Claude Opus 5 | 1M tokens (native) | `low`, `medium`, `high`, `xhigh`, `max` | `high` — default Opus model since v2.1.219 (requires Claude Code v2.1.219+) |
+| Claude Sonnet 5 | 1M tokens (native) | `low`, `medium`, `high`, `xhigh`, `max` | `high` — default model for Pro/Team Standard/Enterprise since v2.1.197 |
 | Claude Opus 4.8 | 1M tokens (native) | `low`, `medium`, `high`, `xhigh`, `max` | `high` (since v2.1.154) |
 | Claude Opus 4.7 (legacy) | 1M tokens (native) | `low`, `medium`, `high`, `xhigh`, `max` | `xhigh` (since Opus 4.7 launch, 2026-04-16) |
 | Claude Sonnet 4.6 | 1M tokens | `low`, `medium`, `high`, `max` | `high` for Pro/Max subscribers (raised from `medium` in v2.1.117) |
 | Claude Haiku 4.5 | 200K tokens | — (no effort support) | — |
 
-> **Note**: `xhigh` is available on Opus 4.8 and Opus 4.7; `max` works on Opus 4.8/4.7/4.6 and Sonnet 4.6 (session-only). Haiku 4.5 does not support effort levels.
+> **Note**: `xhigh` is available on Opus 5, Sonnet 5, Opus 4.8, and Opus 4.7; `max` works on Opus 5, Sonnet 5, Opus 4.8/4.7/4.6 and Sonnet 4.6 (session-only). Haiku 4.5 does not support effort levels.
 
-> **Note**: v2.1.117 fixed a bug where Opus 4.7 sessions computed `/context` against 200K instead of the native 1M window — upgrade to v2.1.117 or later to actually get the 1M context on Opus 4.7. Opus 4.8 also has a native 1M-token window.
+> **Note**: v2.1.117 fixed a bug where Opus 4.7 sessions computed `/context` against 200K instead of the native 1M window — upgrade to v2.1.117 or later to actually get the 1M context on Opus 4.7. Opus 5 and Opus 4.8 also have a native 1M-token window.
 
 > **Note**: `/cost` and `/stats` merged into `/usage` in v2.1.118. `/usage` is now the canonical command with tabs for cost/stats/etc.; `/cost` and `/stats` remain as shortcut aliases that open the corresponding tab. As of v2.1.149, the cost view also breaks spending down by category (skills, subagents, plugins, and per-MCP-server costs).
 
@@ -3149,9 +3152,12 @@ Claude Code supports the following models with adaptive reasoning effort:
 - [Anthropic Cookbook](https://github.com/anthropics/anthropic-cookbook)
 
 ---
-**Last Updated**: 2026-07-22
-**Claude Code Version**: 2.1.217
+**Last Updated**: July 29, 2026
+**Claude Code Version**: 2.1.220
 **Sources**:
 - https://www.anthropic.com/news/claude-sonnet-5
 - https://code.claude.com/docs/en/cli-reference
-**Compatible Models**: Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5
+- https://code.claude.com/docs/en/model-config
+- https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md
+- https://code.claude.com/docs/en/hooks
+**Compatible Models**: Claude Opus 5, Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5

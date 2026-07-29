@@ -396,6 +396,7 @@ Advanced capabilities for complex workflows.
 - Deterministic orchestration of tens-to-hundreds of background subagents
 - Fan-out / pipeline / parallel stages for comprehensive coverage
 - View runs with `/workflows`; `ultracode` `/effort` turns it on for a session
+- Default size guideline is medium (aim for fewer than 15 agents) as of v2.1.219 — change it with **Dynamic workflow size** in `/config`
 
 ### Permission Modes
 - **manual**: Ask for approval on risky actions (renamed from `default` in v2.1.200; `default` still accepted)
@@ -465,7 +466,7 @@ Command-line interface usage patterns and reference.
 - `claude` - Start interactive session
 - `claude -p "prompt"` - Headless/non-interactive mode
 - `claude web` - Launch web session
-- `claude --model` - Select model (Sonnet 4.6, Opus 4.8, Haiku 4.5)
+- `claude --model` - Select model (Opus 5, Sonnet 5, Sonnet 4.6, Opus 4.8, Haiku 4.5)
 - `claude --permission-mode` - Set permission mode
 - `claude --remote` - Enable remote control via WebSocket
 
@@ -880,8 +881,8 @@ Want to add more examples? Follow the structure:
 
 ---
 
-**Last Updated**: July 18, 2026
-**Claude Code Version**: 2.1.212
+**Last Updated**: July 29, 2026
+**Claude Code Version**: 2.1.220
 **Sources**:
 - https://code.claude.com/docs/en/overview
 - https://code.claude.com/docs/en/hooks
@@ -889,7 +890,9 @@ Want to add more examples? Follow the structure:
 - https://code.claude.com/docs/en/permission-modes
 - https://github.com/anthropics/claude-code/releases/tag/v2.1.153
 - https://github.com/anthropics/claude-code/releases/tag/v2.1.154
-**Compatible Models**: Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5
+- https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md
+- https://code.claude.com/docs/en/model-config
+**Compatible Models**: Claude Opus 5, Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5
 **Total Examples**: 100+ files
 **Categories**: 10 features
 **Hooks**: 9 automation scripts

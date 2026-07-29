@@ -137,7 +137,7 @@ claude -p "list todos" | grep "URGENT"
 ### Model Selection Examples
 
 ```bash
-# Use Opus 4.8 for complex tasks
+# Use Opus 5 for complex tasks
 claude --model opus "design a caching strategy"
 
 # Use Haiku 4.5 for quick tasks
@@ -236,6 +236,7 @@ claude --disallowedTools "Bash(rm -rf:*)" "Bash(git push --force:*)"
 | `--input-format` | Specify input format (print mode) | `text`, `stream-json` | `claude -p --input-format stream-json` |
 | `--verbose` | Enable verbose logging | | `claude --verbose` |
 | `--include-partial-messages` | Include streaming events | Requires `stream-json` | `claude -p --output-format stream-json --include-partial-messages "query"` |
+| `--forward-subagent-text` | Forward subagent text output into the stream. As of v2.1.219, subagents spawned at depth 2 or deeper are forwarded too, keyed by their spawning `Agent` `tool_use` id (this is how you observe the nesting enabled by default via `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`) | Requires `stream-json` | `claude -p --output-format stream-json --forward-subagent-text "query"` |
 | `--json-schema` | Get validated JSON matching schema | | `claude -p --json-schema '{"type":"object"}' "query"` |
 | `--max-budget-usd` | Maximum spend for print mode. Since v2.1.217, hitting the cap also halts running background subagents and denies new spawns (previously background agents kept running past the cap) | | `claude -p --max-budget-usd 5.00 "query"` |
 
@@ -758,8 +759,9 @@ Claude Code supports multiple models with different capabilities:
 
 | Model | ID | Context Window | Notes |
 |-------|-----|----------------|-------|
-| Sonnet 5 | `claude-sonnet-5` | 1M tokens | Default on Pro / Team Standard / Enterprise seats (v2.1.197); native 1M-token context window. Opus 4.8 remains the default on Max, Team Premium, Enterprise pay-as-you-go, and the Claude API |
-| Opus 4.8 | `claude-opus-4-8` | 1M tokens | Most capable; adaptive effort levels `low → max`; default effort `high` (v2.1.154) |
+| Sonnet 5 | `claude-sonnet-5` | 1M tokens | Default on Pro / Team Standard / Enterprise seats (v2.1.197); native 1M-token context window. As of v2.1.219, **Opus 5** is the default Opus model on Max, Team Premium, Enterprise pay-as-you-go, and the Anthropic API; Microsoft Foundry still resolves the `opus` alias to Opus 4.6 |
+| Opus 5 | `claude-opus-5` | 1M tokens | Default Opus model on Max, Team Premium, Enterprise pay-as-you-go, Anthropic API, Claude Platform on AWS, Amazon Bedrock, and Google Cloud's Agent Platform (v2.1.219); adaptive effort levels `low → max`, default effort `high` |
+| Opus 4.8 | `claude-opus-4-8` | 1M tokens | Previous flagship Opus, still selectable; adaptive effort levels `low → max`; default effort `high` (v2.1.154) |
 | Sonnet 4.6 | `claude-sonnet-4-6` | 1M tokens | Balanced speed and capability; default effort for Pro/Max subscribers raised from `medium` to `high` in v2.1.117 |
 | Haiku 4.5 | `claude-haiku-4-5` | 200K tokens | Fastest, best for quick tasks; no effort levels |
 | Fable 5 | `claude-fable-5` | — | Mythos-class model, made safe for general use (v2.1.170) |
@@ -779,11 +781,11 @@ claude --model opusplan "design and implement the API"
 /fast
 ```
 
-> **Fast Mode now runs on Opus 4.8 (v2.1.154)**: As of v2.1.154, `/fast` runs **Opus 4.8** by default as a research preview — about 2× the standard rate for ~2.5× the output speed. It previously flipped from Opus 4.6 to Opus 4.7 in v2.1.142. The `CLAUDE_CODE_OPUS_4_6_FAST_MODE_OVERRIDE` env var was **deprecated in v2.1.154 and removed on 2026-06-01**; to use fast mode on Opus 4.6 now, run `/model claude-opus-4-6[1m]` then `/fast on`.
+> **Fast Mode runs on Opus 5 and Opus 4.8 (v2.1.219)**: As of v2.1.219, `/fast` applies to **Opus 5 and Opus 4.8** — Opus 4.7 was removed from fast mode. Opus 5's fast mode is billed at $10/$50 per Mtok. Fast mode first moved to Opus 4.8 in v2.1.154 (about 2× the standard rate for ~2.5× the output speed), having flipped from Opus 4.6 to Opus 4.7 in v2.1.142. The `CLAUDE_CODE_OPUS_4_6_FAST_MODE_OVERRIDE` env var was **deprecated in v2.1.154 and removed on 2026-06-01**; fast mode is no longer available on Opus 4.6 — select Opus 5 or Opus 4.8 instead.
 
-### Effort Levels (Opus 4.8 / Opus 4.7)
+### Effort Levels (Opus 5 / Sonnet 5 / Opus 4.8 / Opus 4.7)
 
-Opus 4.8 and Opus 4.7 support adaptive reasoning with effort levels, ordered from lightest to heaviest: `low` (○), `medium` (◐), `high` (●), `xhigh`, and `max`. The **default** is `high` on Opus 4.8 (since v2.1.154), Opus 4.6, and Sonnet 4.6, and `xhigh` on Opus 4.7. `xhigh` is available on Opus 4.8 and Opus 4.7; `max` works on Opus 4.8/4.7/4.6 and Sonnet 4.6 (session-only). Haiku 4.5 has no effort levels. On Opus 4.6 / Sonnet 4.6, the default effort for Pro/Max subscribers was raised from `medium` to `high` in v2.1.117.
+Opus 5, Sonnet 5, Opus 4.8, and Opus 4.7 support adaptive reasoning with effort levels, ordered from lightest to heaviest: `low` (○), `medium` (◐), `high` (●), `xhigh`, and `max`. The **default** is `high` on Opus 5, Sonnet 5, Opus 4.8 (since v2.1.154), Opus 4.6, and Sonnet 4.6, and `xhigh` on Opus 4.7. `xhigh` is available on Opus 5, Sonnet 5, Opus 4.8, and Opus 4.7; `max` works on Opus 5, Sonnet 5, Opus 4.8/4.7/4.6 and Sonnet 4.6 (session-only). Haiku 4.5 has no effort levels. On Opus 4.6 / Sonnet 4.6, the default effort for Pro/Max subscribers was raised from `medium` to `high` in v2.1.117.
 
 ```bash
 # Set effort level via CLI flag
@@ -793,7 +795,7 @@ claude --effort high "complex review"
 /effort high
 
 # Set effort level via environment variable
-export CLAUDE_CODE_EFFORT_LEVEL=high   # low, medium, high, xhigh (Opus 4.8/4.7), or max — default is high on Opus 4.8
+export CLAUDE_CODE_EFFORT_LEVEL=high   # low, medium, high, xhigh (Opus 5, Sonnet 5, Opus 4.8/4.7), or max — default is high on Opus 5
 ```
 
 The "ultrathink" keyword in prompts activates deep reasoning. The `/effort` menu also offers `ultracode`, which is **not** a model effort level — it sends `xhigh` and has Claude orchestrate dynamic workflows (session-only).
@@ -811,7 +813,7 @@ The "ultrathink" keyword in prompts activates deep reasoning. The `/effort` menu
 | `ANTHROPIC_DEFAULT_SONNET_MODEL` | Override default Sonnet model ID |
 | `ANTHROPIC_DEFAULT_HAIKU_MODEL` | Override default Haiku model ID |
 | `MAX_THINKING_TOKENS` | Set extended thinking token budget |
-| `CLAUDE_CODE_EFFORT_LEVEL` | Set effort level (`low`/`medium`/`high`/`xhigh`/`max`) — default is `high` on Opus 4.8 (`xhigh` on Opus 4.7); `xhigh` needs Opus 4.8/4.7; `max` works on Opus 4.8/4.7/4.6 and Sonnet 4.6 |
+| `CLAUDE_CODE_EFFORT_LEVEL` | Set effort level (`low`/`medium`/`high`/`xhigh`/`max`) — default is `high` on Opus 5, Sonnet 5, and Opus 4.8 (`xhigh` on Opus 4.7); `xhigh` needs Opus 5, Sonnet 5, or Opus 4.8/4.7; `max` works on Opus 5, Sonnet 5, Opus 4.8/4.7/4.6 and Sonnet 4.6 |
 | `CLAUDE_CODE_SIMPLE` | Minimal mode, set by `--bare` flag |
 | `CLAUDE_CODE_SAFE_MODE` | Set to `1` to start with all customizations disabled (CLAUDE.md, plugins, skills, hooks, MCP) — env-var form of `--safe-mode`, for isolating config problems (v2.1.169) |
 | `CLAUDE_CODE_DISABLE_BUNDLED_SKILLS` | Set to `1` to hide the bundled skills, workflows, and commands from the model (v2.1.169) |
@@ -851,11 +853,11 @@ The "ultrathink" keyword in prompts activates deep reasoning. The `/effort` menu
 | `CLAUDE_CODE_FORCE_SYNC_OUTPUT` | Set to `1` to force synchronous output for terminals where auto-detection misses (e.g., Emacs `eat`) (v2.1.129+) |
 | `CLAUDE_CODE_PACKAGE_MANAGER_AUTO_UPDATE` | Set to `1` to enable background upgrades for Homebrew/WinGet installs (which normally do not auto-update) (v2.1.129+) |
 | `CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY` | Set to `1` to opt in to gateway `/v1/models` discovery when `ANTHROPIC_BASE_URL` is set. Without it, `/model` shows the built-in static list (v2.1.129+) |
-| `CLAUDE_CODE_ENABLE_AUTO_MODE` | Legacy opt-in for auto mode on Bedrock, Vertex, and Foundry (v2.1.158–v2.1.206). As of v2.1.207, auto mode is available by default on those providers for Sonnet 5, Opus 4.7/4.8, and Fable 5 — this variable is accepted for compatibility but has no effect |
+| `CLAUDE_CODE_ENABLE_AUTO_MODE` | Legacy opt-in for auto mode on Bedrock, Vertex, and Foundry (v2.1.158–v2.1.206). As of v2.1.207, auto mode is available by default on those providers for Sonnet 5, Opus 4.7/4.8, and Fable 5 (Opus 5 added in v2.1.219) — this variable is accepted for compatibility but has no effect |
 | `CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION` | Cap on WebSearch tool calls per session, to stop runaway search loops. Default 200 (v2.1.212) |
 | `CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION` | Cap on subagent spawns per session, to stop runaway delegation loops. Default 200; `/clear` resets the budget (v2.1.212) |
 | `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` | Cap on subagents running concurrently. Default 20 (v2.1.217) |
-| `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` | Controls how deep nested subagent spawns can go. Nesting is now off by default; set this to opt back in to deeper nesting (v2.1.217) |
+| `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` | Controls how deep nested subagent spawns can go. Since v2.1.219 the default is **3 layers** (was 1); set to `1` to disable nesting entirely |
 | `CLAUDE_CODE_MCP_AUTO_BACKGROUND_MS` | Threshold, in milliseconds, before a long-running MCP tool call auto-backgrounds. Default 120000 (2 minutes) (v2.1.212) |
 | `CLAUDE_AX_SCREEN_READER` | Set to `1` to enable plain-text screen reader rendering mode. Same effect as `--ax-screen-reader` or `"axScreenReader": true` in settings (v2.1.208) |
 | `CLAUDE_CLIENT_PRESENCE_FILE` | Point at a marker file to suppress mobile push notifications while you're at the machine (v2.1.181+). Note: the name is `CLAUDE_CLIENT_PRESENCE_FILE`, not `CLAUDE_CODE_CLIENT_PRESENCE_FILE`. |
@@ -863,7 +865,7 @@ The "ultrathink" keyword in prompts activates deep reasoning. The `/effort` menu
 | `CLAUDE_CODE_RETRY_WATCHDOG` | Retry control recommended for unattended sessions, as an alternative to raising `CLAUDE_CODE_MAX_RETRIES` (v2.1.186+). |
 | `CLAUDE_ENABLE_STREAM_WATCHDOG` | Streaming idle watchdog (aborts/retries after 5 min with no stream events) is on by default for all providers; set to `0` to disable (v2.1.196). |
 | `CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT` | Override the 5-minute idle abort for remote MCP tool calls that hang with no response (v2.1.187+). |
-| `CLAUDE_CODE_OPUS_4_6_FAST_MODE_OVERRIDE` | **Removed (no-op as of v2.1.160).** Previously pinned Fast Mode (`/fast`) to Opus 4.6. To use fast mode on Opus 4.6 now, run `/model claude-opus-4-6[1m]` then `/fast on`. |
+| `CLAUDE_CODE_OPUS_4_6_FAST_MODE_OVERRIDE` | **Removed (no-op as of v2.1.160).** Previously pinned Fast Mode (`/fast`) to Opus 4.6. As of v2.1.219, `/fast` applies to **Opus 5 and Opus 4.8** only — Opus 4.6 and Opus 4.7 are no longer fast-mode targets. |
 
 > **`ENABLE_TOOL_SEARCH` on Vertex AI (v2.1.119+)**: Tool search is **disabled by default on Google Cloud Vertex AI** deployments. Users who want the tool-search capability on Vertex must explicitly opt in with `export ENABLE_TOOL_SEARCH=true`. On direct Anthropic API it remains enabled by default.
 
@@ -881,6 +883,7 @@ These keys live in a `settings.json` file (`~/.claude/settings.json` for user sc
 | `language` | Sets Claude's preferred response language and voice-dictation language (e.g. `"french"`, `"japanese"`). As of **v2.1.176** it also pins the language used for auto-generated session titles. |
 | `sandbox.filesystem.disabled` | (v2.1.216) Skips filesystem sandboxing while keeping network egress control enforced. For workflows where file sandboxing breaks tooling but network policy must stay enforced. |
 | `emojiCompletionEnabled` | (v2.1.217) Enables emoji shortcode autocomplete in the prompt input (e.g. typing `:heart:` inserts ❤️). Set `false` to disable. |
+| `workflowSizeGuideline` | (v2.1.219) Sets the advisory Dynamic workflow size guideline from any settings file. The guideline is guidance Claude aims for, not a hard cap — the default is medium (aim for fewer than 15 agents), and other sizes or unrestricted can be selected. While this key is set, the "Dynamic workflow size" row is hidden in `/config`. Distinct from `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`, which is an enforced concurrency limit. |
 
 ```json
 {
@@ -994,8 +997,8 @@ claude -p --output-format json "query"
 
 ---
 
-**Last Updated**: July 22, 2026
-**Claude Code Version**: 2.1.217
+**Last Updated**: July 29, 2026
+**Claude Code Version**: 2.1.220
 **Sources**:
 - https://code.claude.com/docs/en/cli-reference
 - https://code.claude.com/docs/en/env-vars
@@ -1004,7 +1007,6 @@ claude -p --output-format json "query"
 - https://code.claude.com/docs/en/changelog
 - https://code.claude.com/docs/en/settings
 - https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md
-- https://docs.anthropic.com/en/docs/claude-code/cli-reference
 - https://code.claude.com/docs/en/troubleshooting
 - https://code.claude.com/docs/en/slash-commands
 - https://code.claude.com/docs/en/model-config
@@ -1016,4 +1018,6 @@ claude -p --output-format json "query"
 - https://github.com/anthropics/claude-code/releases/tag/v2.1.154
 - https://code.claude.com/docs/en/plugins
 - https://code.claude.com/docs/en/overview
-**Compatible Models**: Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5
+- https://code.claude.com/docs/en/sub-agents
+- https://code.claude.com/docs/en/headless
+**Compatible Models**: Claude Opus 5, Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5

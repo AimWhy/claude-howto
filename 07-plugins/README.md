@@ -1125,8 +1125,8 @@ The following Claude Code features work together with plugins:
 
 ---
 
-**Last Updated**: July 11, 2026
-**Claude Code Version**: 2.1.206
+**Last Updated**: July 29, 2026
+**Claude Code Version**: 2.1.220
 **Sources**:
 - https://code.claude.com/docs/en/plugins
 - https://code.claude.com/docs/en/changelog#2-1-172
@@ -1142,4 +1142,5 @@ The following Claude Code features work together with plugins:
 - https://github.com/anthropics/claude-code/releases/tag/v2.1.142
 - https://github.com/anthropics/claude-code/releases/tag/v2.1.143
 - https://code.claude.com/docs/en/cli-reference
-**Compatible Models**: Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5
+- https://code.claude.com/docs/en/model-config
+**Compatible Models**: Claude Opus 5, Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5

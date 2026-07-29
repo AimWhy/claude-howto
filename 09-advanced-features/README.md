@@ -279,8 +279,8 @@ Extended thinking is a deliberate, step-by-step reasoning process where Claude:
 - `Option + T` (macOS) / `Alt + T` (Windows/Linux) - Toggle extended thinking
 
 **Automatic activation**:
-- Enabled by default for all models (Opus 4.8, Opus 4.7, Sonnet 4.6, Haiku 4.5)
-- Opus 4.8: Adaptive reasoning with effort levels: `low` (○), `medium` (◐), `high` (●), `xhigh`, `max`. The default is `high` on Opus 4.8 (v2.1.154), Opus 4.6, and Sonnet 4.6, and `xhigh` on Opus 4.7. `xhigh` is available on Opus 4.8 and Opus 4.7 (it falls back to `high` on Opus 4.6 / Sonnet 4.6). `max` works on Opus 4.8/4.7/4.6 and Sonnet 4.6 (session-only). Haiku 4.5 has no effort levels. Opus 4.8 and Opus 4.7 have a 1M-token native context window (1M context fix landed in v2.1.117 — before that, `/context` miscounted Opus 4.7 against a 200K window and triggered premature autocompact). Since v2.1.129, `/context` shows its visualization in-UI only; the ASCII viz no longer leaks into the conversation context (~1.6k tokens saved per call), so `/context` is safe to invoke freely.
+- Enabled by default for all models (Opus 5, Opus 4.8, Opus 4.7, Sonnet 4.6, Haiku 4.5)
+- Opus 5 / Opus 4.8: Adaptive reasoning with effort levels: `low` (○), `medium` (◐), `high` (●), `xhigh`, `max`. The default is `high` on Opus 5 (v2.1.219), Opus 4.8 (v2.1.154), Opus 4.6, and Sonnet 4.6, and `xhigh` on Opus 4.7. `xhigh` is available on Opus 5, Opus 4.8, and Opus 4.7 (it falls back to `high` on Opus 4.6 / Sonnet 4.6). `max` works on Opus 5 and Opus 4.8/4.7/4.6 and Sonnet 4.6 (session-only). Haiku 4.5 has no effort levels. Opus 5, Opus 4.8, and Opus 4.7 have a 1M-token native context window (1M context fix landed in v2.1.117 — before that, `/context` miscounted Opus 4.7 against a 200K window and triggered premature autocompact). Since v2.1.129, `/context` shows its visualization in-UI only; the ASCII viz no longer leaks into the conversation context (~1.6k tokens saved per call), so `/context` is safe to invoke freely.
 - Pro/Max subscribers on Opus 4.6 / Sonnet 4.6: default effort was raised from `medium` to `high` in v2.1.117.
 - Other models: Fixed budget up to 31,999 tokens
 
@@ -294,9 +294,9 @@ Extended thinking is a deliberate, step-by-step reasoning process where Claude:
 export MAX_THINKING_TOKENS=1024
 ```
 
-**Effort level** (supported on Opus 4.8, Opus 4.7, Opus 4.6, and Sonnet 4.6 — not Haiku 4.5):
+**Effort level** (supported on Opus 5, Opus 4.8, Opus 4.7, Opus 4.6, and Sonnet 4.6 — not Haiku 4.5):
 ```bash
-export CLAUDE_CODE_EFFORT_LEVEL=high   # low (○), medium (◐), high (●), xhigh (Opus 4.8/4.7), or max — default is high on Opus 4.8
+export CLAUDE_CODE_EFFORT_LEVEL=high   # low (○), medium (◐), high (●), xhigh (Opus 5/4.8/4.7), or max — default is high on Opus 5 and Opus 4.8
 ```
 
 **CLI flag**:
@@ -309,7 +309,16 @@ claude --effort high "complex architectural review"
 /effort high
 ```
 
-> **Note:** The keyword "ultrathink" in prompts activates deep reasoning mode. Effort levels `low`, `medium`, `high`, and `max` are supported on Opus 4.8, Opus 4.7, Opus 4.6, and Sonnet 4.6 (Haiku 4.5 has none). `xhigh` is available on Opus 4.8 and Opus 4.7. The default effort is `high` on Opus 4.8 (and Opus 4.6 / Sonnet 4.6) and `xhigh` on Opus 4.7. The `/effort` menu also offers `ultracode`, which is **not** a model effort level — it sends `xhigh` and has Claude orchestrate dynamic workflows (session-only).
+> **Note:** The keyword "ultrathink" in prompts activates deep reasoning mode. Effort levels `low`, `medium`, `high`, and `max` are supported on Opus 5, Opus 4.8, Opus 4.7, Opus 4.6, and Sonnet 4.6 (Haiku 4.5 has none). `xhigh` is available on Opus 5, Opus 4.8, and Opus 4.7. The default effort is `high` on Opus 5, Opus 4.8 (and Opus 4.6 / Sonnet 4.6) and `xhigh` on Opus 4.7. Unlike Opus 4.8 and Opus 4.7, which pin their default effort on first run, Opus 5 has no such hold — a level you previously set carries over. The `/effort` menu also offers `ultracode`, which is **not** a model effort level — it sends `xhigh` and has Claude orchestrate dynamic workflows (session-only).
+
+### Safety-Classifier Fallback on Opus 5
+
+Separate from the [`fallbackModel` setting](#fallback-models-fallbackmodel) (which handles overload and unavailability), Claude Code applies a **category-based fallback** when a safety classifier flags a request. It requires Claude Code v2.1.219 or later.
+
+- **Opus 5**: cybersecurity-flagged requests re-run on Opus 4.8. Biology-flagged requests end with a refusal instead, because Opus 5 runs its own biology classifiers with no fallback model. You get those refusals from the first flagged request.
+- Workloads in offensive security or biology — penetration testing, Capture the Flag (CTF) exercises, and biology-adjacent codebases — trigger fallback frequently, often on the first request.
+
+Why this matters here: if you run [security-review subagents](../04-subagents/README.md) or CTF/pentest work on Opus 5, expect silent re-runs on Opus 4.8 (different effort ceiling and context window) for cybersecurity prompts, and outright refusals for biology-adjacent ones. Pin a different model explicitly if that behavior gets in the way.
 
 ### Benefits of Extended Thinking
 
@@ -397,26 +406,29 @@ Extended thinking is controlled via environment variables, keyboard shortcuts, a
 # Set thinking token budget
 export MAX_THINKING_TOKENS=16000
 
-# Set effort level (Opus 4.8, Opus 4.7, Opus 4.6, Sonnet 4.6): low (○), medium (◐), high (●), xhigh (Opus 4.8/4.7), or max — default is high on Opus 4.8
+# Set effort level (Opus 5, Opus 4.8, Opus 4.7, Opus 4.6, Sonnet 4.6): low (○), medium (◐), high (●), xhigh (Opus 5/4.8/4.7), or max — default is high on Opus 5 and Opus 4.8
 export CLAUDE_CODE_EFFORT_LEVEL=high
 ```
 
 Toggle during a session with `Alt+T` / `Option+T`, set effort with `/effort`, or configure via `/config`.
 
-> **Lean system prompt (v2.1.154):** The lean system prompt is now the **default** for all models except Haiku, Sonnet, and Opus 4.7-and-earlier, reducing baseline token overhead on Opus 4.8.
+> **Lean system prompt (v2.1.154):** The lean system prompt is now the **default** for all models except Haiku, Sonnet, and Opus 4.7-and-earlier, reducing baseline token overhead on Opus 5 and Opus 4.8.
 
 ---
 
 ## Auto Mode
 
-Auto Mode is a permission mode that uses a background safety classifier to review each action before execution. It allows Claude to work autonomously while blocking dangerous operations. It's available on all plans, but requires an eligible model (Claude Opus 4.6+, Sonnet 4.6+, or Fable 5 on the Anthropic API and Claude Platform on AWS; Sonnet 5, Opus 4.7, Opus 4.8, or Fable 5 on Bedrock, Vertex, Foundry, and signed-in Claude apps gateway sessions) and, on Team/Enterprise, an Owner opt-in.
+Auto Mode is a permission mode that uses a background safety classifier to review each action before execution. It allows Claude to work autonomously while blocking dangerous operations. It's available on all plans, but requires an eligible model (Claude Opus 5, Opus 4.6+, Sonnet 4.6+, or Fable 5 on the Anthropic API and Claude Platform on AWS; Opus 5, Sonnet 5, Opus 4.7, Opus 4.8, or Fable 5 on Bedrock, Vertex, Foundry, and signed-in Claude apps gateway sessions). On Team and Enterprise it is on by default — administrators can turn it off for the organization in managed settings.
 
 ### Requirements
 
-- **Plan**: Team, Enterprise, or API (not available on Pro or Max plans)
-- **Model**: Claude Sonnet 4.6 or Opus 4.8
-- **Provider**: Anthropic API only (not supported on Bedrock, Vertex, or Foundry)
-- **Classifier**: Runs on Claude Sonnet 4.6 (adds extra token cost)
+Auto mode is available only when your account meets all of these requirements:
+
+- **Plan**: all plans.
+- **Organization**: on Team and Enterprise, auto mode is available by default. Administrators can turn it off for the organization by setting `permissions.disableAutoMode` to `"disable"` in managed settings.
+- **Model**: on the Anthropic API and Claude Platform on AWS — Claude Opus 4.6 or later (Opus 5 included), Sonnet 4.6 or later, or Fable 5. On Amazon Bedrock, Google Cloud's Agent Platform (Vertex AI), Microsoft Foundry, and signed-in Claude apps gateway sessions — only Claude Sonnet 5, Opus 4.7 or later (Opus 5 included), and Fable 5. Older models — Sonnet 4.5, Opus 4.5, Haiku, and claude-3 models — are not supported on any provider.
+- **Provider**: available by default on the Anthropic API, Claude Platform on AWS, Amazon Bedrock, Google Cloud's Agent Platform (Vertex AI), Microsoft Foundry, and signed-in Claude apps gateway sessions. In v2.1.158 through v2.1.206, auto mode was off on all of these except the Anthropic API and Claude Platform on AWS until you set `CLAUDE_CODE_ENABLE_AUTO_MODE=1`; v2.1.207 removed the requirement. The variable is still accepted for compatibility and has no effect from v2.1.207 onward.
+- **Classifier**: runs on Claude Sonnet 4.6 (adds extra token cost)
 
 ### Enabling Auto Mode
 
@@ -431,7 +443,7 @@ claude --enable-auto-mode
 
 > **v2.1.158 update**: Auto mode became available on Bedrock, Vertex, and Foundry for Opus 4.7/4.8, gated behind `CLAUDE_CODE_ENABLE_AUTO_MODE=1`.
 >
-> **v2.1.207 update**: That opt-in requirement was removed. Auto mode is now available by default on Bedrock, Vertex AI, Microsoft Foundry, and signed-in Claude apps gateway sessions for Claude Sonnet 5, Opus 4.7, Opus 4.8, and Fable 5 — no flag or env var needed. Administrators can disable it with `disableAutoMode` in managed settings. `CLAUDE_CODE_ENABLE_AUTO_MODE` is still accepted for compatibility but has no effect from v2.1.207 onward.
+> **v2.1.207 update**: That opt-in requirement was removed. Auto mode is now available by default on Bedrock, Vertex AI, Microsoft Foundry, and signed-in Claude apps gateway sessions for Claude Sonnet 5, Opus 4.7, Opus 4.8, and Fable 5 (and Opus 5 from v2.1.219) — no flag or env var needed. Administrators can disable it with `disableAutoMode` in managed settings. `CLAUDE_CODE_ENABLE_AUTO_MODE` is still accepted for compatibility but has no effect from v2.1.207 onward.
 
 Or set it as the default permission mode:
 
@@ -469,6 +481,8 @@ Auto mode blocks the following by default:
 | Mass deletion | `rm -rf` on large directories |
 | IAM changes | Permission and role modifications |
 | Force push to main | `git push --force origin main` |
+
+> **More decisions moved to the classifier (v2.1.218)**: The classifier also decides removals targeting the filesystem root or home directory, such as `rm -rf /` and `rm -rf ~`, including when the removal sits inside command or process substitution. Before v2.1.218, the plain forms prompted for approval instead, and the substitution forms prompted in v2.1.208 through v2.1.217. The background-`&` and suspicious-Windows-path checks likewise no longer open permission dialogs — the classifier judges them.
 
 ### Default Allowed Actions
 
@@ -771,6 +785,8 @@ done
 
 Dynamic workflows let Claude orchestrate tens to hundreds of background [subagents](../04-subagents/README.md) **deterministically** — fan-out, pipelines, and parallel stages encoded in a script rather than left to the model's improvisation. Where a single agent holds one context window, a workflow decomposes a task across many agents and recombines their results.
 
+As of v2.1.219, dynamic workflows default to a **medium size guideline (aim for fewer than 15 agents)**. Pick another size — or unrestricted — via **Dynamic workflow size** in `/config`, or set the `workflowSizeGuideline` key in your settings file. The running-workflow status line shows the active size and points to `/config` for changing it.
+
 ### When to Use Them
 
 - **Comprehensive coverage** — audit or review across many files/dimensions in parallel.
@@ -880,7 +896,7 @@ Permission modes control what actions Claude can take without explicit approval.
 | `manual` | Read files only; prompts for all other actions. Renamed from `default` in v2.1.200 — `default` is still accepted as an alias |
 | `acceptEdits` | Read and edit files; prompts for commands |
 | `plan` | Read files only (research mode, no edits) |
-| `auto` | All actions with background safety classifier checks. Requires an eligible plan, model (Sonnet 5, Opus 4.7/4.8, or Fable 5 on most providers), and provider — see [Auto Mode](#auto-mode) |
+| `auto` | All actions with background safety classifier checks. Requires an eligible model (Opus 5, Sonnet 5, Opus 4.7/4.8, or Fable 5 on most providers) and provider — available on all plans, see [Auto Mode](#auto-mode) |
 | `bypassPermissions` | All actions, no permission checks (dangerous) |
 | `dontAsk` | Only pre-approved tools execute; all others denied |
 
@@ -888,9 +904,11 @@ Permission modes control what actions Claude can take without explicit approval.
 
 Cycle through modes with `Shift+Tab` in the CLI. Set a default with the `--permission-mode` flag or the `permissions.defaultMode` setting.
 
+> **Plan mode defers shell commands to the classifier (v2.1.218)**: When [auto mode](#auto-mode) is available and the `useAutoModeDuringPlan` setting is on — which it is by default — the classifier reviews shell commands during planning instead of prompting you. Approved commands run, and rejected ones are blocked. Plan mode still blocks file writes unconditionally.
+
 As of v2.1.160, even `acceptEdits` prompts before writing shell-startup files (`.zshenv`, `.zlogin`, `.bash_login`, `~/.config/git/`) and code-executing build configs (`.npmrc`, `.yarnrc*`, `bunfig.toml`, `.bazelrc`, `.pre-commit-config.yaml`, `.devcontainer/`, …), which could otherwise lead to unintended command execution.
 
-> **`--dangerously-skip-permissions` extended path coverage (v2.1.121, v2.1.126)**: The `--dangerously-skip-permissions` CLI flag (and equivalent `bypassPermissions` mode) now bypasses prompts for writes to a much broader allowlist — `.claude/skills/`, `.claude/agents/`, `.claude/commands/`, `.claude/`, `.git/`, `.vscode/`, and shell config files. Catastrophic removal commands (`rm -rf /`, etc.) still prompt regardless of mode. Treat the flag as a sharper tool than before; use it only in throwaway sandboxes.
+> **`--dangerously-skip-permissions` extended path coverage (v2.1.121, v2.1.126)**: The `--dangerously-skip-permissions` CLI flag (and equivalent `bypassPermissions` mode) now bypasses prompts for writes to a much broader allowlist — `.claude/skills/`, `.claude/agents/`, `.claude/commands/`, `.claude/`, `.git/`, `.vscode/`, and shell config files. Catastrophic removal commands (`rm -rf /`, etc.) still prompt in this mode (in auto mode they are judged by the classifier instead — see [Auto Mode](#auto-mode)). Treat the flag as a sharper tool than before; use it only in throwaway sandboxes.
 
 > **Windows shell detection (v2.1.120, v2.1.126)**: Git for Windows / Git Bash is no longer required. When Git Bash is absent, Claude Code uses PowerShell as the shell tool. From v2.1.126 PowerShell is the *primary* shell when the PowerShell tool is enabled, and detection covers PowerShell 7 installed via the Microsoft Store, MSI without PATH, or as a `.NET global tool`.
 
@@ -1971,6 +1989,7 @@ claude --no-sandbox    # Disable sandboxing
 | `sandbox.filesystem.denyRead` | Paths denied for read access |
 | `sandbox.network.allowedDomains` | Domains Bash-launched processes are allowed to reach (supports `*.` wildcard) |
 | `sandbox.network.deniedDomains` | Domains to block even when `allowedDomains` wildcard would otherwise permit them (v2.1.113+) |
+| `sandbox.network.strictAllowlist` | (v2.1.219) Deny non-allowlisted hosts for sandboxed commands without prompting |
 | `sandbox.enableWeakerNetworkIsolation` | Enable weaker network isolation on macOS |
 | `sandbox.bwrapPath` | (v2.1.133+, Linux/WSL) Path to the `bubblewrap` binary. Default: `$PATH` lookup. |
 | `sandbox.socatPath` | (v2.1.133+, Linux/WSL) Path to the `socat` binary. Default: `$PATH` lookup. |
@@ -2069,6 +2088,7 @@ Since v2.1.83, administrators can deploy multiple managed settings files into a 
 | `enforceAvailableModels` | (v2.1.175) When `true`, the `availableModels` allowlist *also* constrains the **Default** model — if the configured default is not in the list, Claude Code falls back to the first allowed model. User and project settings can no longer widen a managed `availableModels` list. |
 | `allowedChannelPlugins` | Control which channel plugins are permitted |
 | `autoMode.environment` | Configure trusted infrastructure for auto mode |
+| `workflowSizeGuideline` | (v2.1.219) Set the advisory [dynamic workflow size guideline](#dynamic-workflows). Readable from any settings file, not just managed settings; while one sets it, the **Dynamic workflow size** row is hidden from `/config` |
 | `wslInheritsWindowsSettings` | Windows/WSL only (v2.1.118+): when `true`, Claude Code running inside WSL inherits managed settings from the Windows host, so enterprise policies deployed via Registry/MDM apply uniformly across the Windows and WSL shells |
 | `parentSettingsBehavior` | (v2.1.133+, admin-tier) Controls how the SDK's `managedSettings` merges with parent-process settings. `"first-wins"` keeps existing precedence (earlier setting wins on conflict); `"merge"` deep-merges values. |
 | Custom policies | Organization-specific permission and tool policies |
@@ -2195,7 +2215,7 @@ export ANTHROPIC_API_KEY=sk-ant-...
 
 # Thinking configuration
 export MAX_THINKING_TOKENS=16000
-export CLAUDE_CODE_EFFORT_LEVEL=high   # low, medium, high, xhigh (Opus 4.8/4.7), or max — default is high on Opus 4.8 (supported on Opus 4.8, Opus 4.7, Opus 4.6, Sonnet 4.6)
+export CLAUDE_CODE_EFFORT_LEVEL=high   # low, medium, high, xhigh (Opus 5/4.8/4.7), or max — default is high on Opus 5 and Opus 4.8 (supported on Opus 5, Opus 4.8, Opus 4.7, Opus 4.6, Sonnet 4.6)
 
 # Feature toggles
 export CLAUDE_CODE_DISABLE_AUTO_MEMORY=true
@@ -2272,6 +2292,7 @@ The `/config` command provides an interactive menu to toggle settings such as:
 - Verbose output
 - Permission mode
 - Model selection
+- Dynamic workflow size (v2.1.219) — hidden when `workflowSizeGuideline` is set in a settings file, see [Dynamic Workflows](#dynamic-workflows)
 
 In the interactive menu, press Enter or Space to change the selected setting, and Esc to save and close (v2.1.183+).
 
@@ -2426,8 +2447,11 @@ For more information about Claude Code and related features:
 
 ---
 
-**Last Updated**: 2026-07-22
-**Claude Code Version**: 2.1.217
+**Last Updated**: July 29, 2026
+**Claude Code Version**: 2.1.220
 **Sources**:
 - https://code.claude.com/docs/en/settings
 - https://code.claude.com/docs/en/sandboxing
+- https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md
+- https://code.claude.com/docs/en/model-config
+- https://code.claude.com/docs/en/permission-modes

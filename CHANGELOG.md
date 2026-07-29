@@ -1,5 +1,112 @@
 # Changelog
 
+## [v2.1.220] — 2026-07-29
+
+### Synced to Claude Code v2.1.220
+
+Bumps tutorial coverage from the v2.1.217 baseline (2026-07-22 sync) to
+v2.1.220 — three contiguous releases (v2.1.218, v2.1.219, v2.1.220), no gaps.
+v2.1.219 drives most of this sync: it added Claude Opus 5 and reversed the
+nested-subagent default that the previous sync had just documented.
+
+### Fixed
+
+- **Nested-subagent default reversed again (v2.1.219)** — five locations across
+  `04-subagents/README.md`, `CATALOG.md`, `10-cli/README.md`, and
+  `QUICK_REFERENCE.md` stated that nested spawning is disabled by default. That
+  was correct for v2.1.217–v2.1.218 only. v2.1.219 sets the default to **depth
+  3**; `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` now *disables* nesting rather
+  than enabling it. All five now lead with current behavior and carry an
+  identical three-era history note (v2.1.172–v2.1.216 nested by default up to 5
+  layers with no way to change it; v2.1.217 made nesting opt-in at depth 1;
+  v2.1.219 set the default to 3) so the next reversal degrades gracefully.
+- **Opus 4.8 named as the default Opus model** — `10-cli/README.md` stated
+  "Opus 4.8 remains the default on Max, Team Premium, Enterprise pay-as-you-go,
+  and the Claude API". As of v2.1.219 that is **Claude Opus 5**
+  (`claude-opus-5`, 1M context, default effort `high`), which was absent from
+  every model table in the repo. Added to the `10-cli` and
+  `claude_concepts_guide.md` model tables and to all 18 `Compatible Models`
+  footers, plus ~20 effort-level enumerations. Microsoft Foundry still resolves
+  the `opus` alias to Opus 4.6.
+- **Fast-mode model list** — `/fast` now applies to **Opus 5 and Opus 4.8**;
+  Opus 4.7 was removed (v2.1.219). Also corrected a present-tense instruction
+  for enabling fast mode on Opus 4.6 in `10-cli/README.md`.
+- **Auto-mode eligibility self-contradiction** — `09-advanced-features/README.md`
+  said both "available on all plans" and "Team, Enterprise, or API" /
+  "Anthropic API only". Rewritten to the four documented requirements
+  (Plan / Organization / Model / Provider). Auto mode is available on **all
+  plans**, default-on for Team/Enterprise with an administrator opt-*out* via
+  `permissions.disableAutoMode` — the file previously described an Owner
+  opt-*in*.
+- **Stale auto-mode opt-in instruction** — `CATALOG.md` still told users to set
+  `CLAUDE_CODE_ENABLE_AUTO_MODE=1` on third-party providers. That requirement
+  was removed in v2.1.207; the variable is accepted for compatibility but has
+  no effect.
+- **Hook-event count disagreement** — `LEARNING-ROADMAP.md` and
+  `claude_concepts_guide.md` said 29 while `06-hooks/README.md` said 30 (now
+  31). Aligned both to 31. `claude_concepts_guide.md`'s named event table was
+  also missing `MessageDisplay` (a pre-existing gap from v2.1.152) alongside
+  the new `DirectoryAdded`; its event list is now identical to `06-hooks`.
+- **`doc-generator` skill name mismatch** — `03-skills/doc-generator/SKILL.md`
+  declared `name: api-documentation-generator` while living in `doc-generator/`,
+  contradicting every catalog and index entry. Renamed in the English copy and
+  mirrored to `ja/`, `zh/`, `uk/`.
+- **Stale "New Features (May 2026)" headings** — retitled in `CATALOG.md` and
+  `resources.md` to date-free headings that cannot go stale again, with the
+  `CATALOG.md` navigation anchor updated to match.
+- **Legacy `docs.anthropic.com` links** — the three remaining footer links in
+  `01-slash-commands/README.md`, `05-mcp/README.md`, and `10-cli/README.md`
+  migrated to `code.claude.com`.
+- **Skill example shadowing a built-in** — `03-skills/README.md` used
+  `name: deep-research` as a custom-skill example, which now shadows the
+  built-in `/deep-research`. Renamed to `topic-research` and mirrored to
+  `vi/`, `ja/`, `uk/`.
+
+### Added
+
+- **`DirectoryAdded` hook (v2.1.219)** — fires after `/add-dir` or the SDK
+  `register_repo_root` control request registers a new working directory
+  mid-session. Added to the `06-hooks/README.md` events table (count 30 → 31).
+- **`/deep-research` is explicit-invocation only (v2.1.218)** — Claude no
+  longer launches it on its own. Added to the bundled-skills table.
+- **`/code-review` runs as a background subagent (v2.1.218)** — review work no
+  longer fills the conversation, and stacked slash commands remain its review
+  target. Documented in `03-skills/README.md` and `CATALOG.md`.
+- **Fork skills run in the background by default (v2.1.218)** — skills with
+  `context: fork` default to `background: true`; set `false` to opt out. Added
+  a `background` frontmatter row, a matching YAML sample line, and an explicit
+  statement of the default so it doesn't read as contradicting
+  `04-subagents`, where `background: true` *forces* background.
+- **Agent frontmatter hooks require workspace trust (v2.1.218)** — hooks in a
+  project subagent run only after the folder the agent file came from has
+  accepted workspace trust.
+- **Dynamic workflow size guideline (v2.1.219)** — workflows now default to a
+  medium guideline (aim for fewer than 15 agents), selectable via **Dynamic
+  workflow size** in `/config` or the new `workflowSizeGuideline` settings key.
+- **`sandbox.network.strictAllowlist` (v2.1.219)** — denies non-allowlisted
+  hosts for sandboxed commands without prompting.
+- **MCP error surfacing (v2.1.219)** — `claude mcp list` and `/mcp` now report
+  HTTP status and error text on connection failure; hidden leading/trailing
+  whitespace in config values is warned about; headless runs expose
+  `mcp_server_errors` in the stream-json init event. Added as troubleshooting
+  guidance in `05-mcp/README.md`.
+- **Nested subagent forwarding in stream-json (v2.1.219)** — subagents at depth
+  2+ now appear when `--forward-subagent-text` is set, keyed by their spawning
+  `Agent` `tool_use` id.
+- **Frontmatter booleans accept more values (v2.1.218)** — `yes`/`no`,
+  `on`/`off`, `1`/`0`, case-insensitive, alongside `true`/`false`.
+- **Agent names reject `:` (v2.1.218)** — reserved for plugin namespacing.
+- **Auto and plan mode defer more to the classifier (v2.1.218)** — `rm -rf /`
+  and `rm -rf ~` (including inside command/process substitution) are now
+  adjudicated by the classifier rather than opening a permission dialog, and
+  plan mode with auto no longer prompts for Bash commands the static analyzer
+  can't prove read-only (`useAutoModeDuringPlan`, on by default).
+- **Opus 5 safety-classifier fallback (v2.1.219)** — cybersecurity-flagged
+  requests re-run on Opus 4.8; biology-flagged requests end in a refusal, since
+  Opus 5 runs its own biology classifiers with no fallback. Relevant to readers
+  using this repo's security-review subagent and plugin templates, as
+  pentest/CTF workloads trigger it frequently.
+
 ## [v2.1.217] — 2026-07-22
 
 ### Synced to Claude Code v2.1.217

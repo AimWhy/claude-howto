@@ -399,9 +399,9 @@ cp -r 03-skills/code-review-specialist ~/.claude/skills/
 | **Task List** | Manage background tasks | `/task list`, `/task status <id>` |
 | **Auto Memory** | Automatic memory saving from conversations | Claude auto-saves key context to CLAUDE.md |
 | **Git Worktrees** | Isolated workspaces for parallel development | `/worktree` to create isolated workspace |
-| **Model Selection** | Switch between Sonnet 4.6, Opus 4.8, and Haiku 4.5 | `/model` — since v2.1.153 the choice is saved as the default for new sessions; press `s` for session-only |
+| **Model Selection** | Switch between Opus 5, Sonnet 5, Sonnet 4.6, Opus 4.8, and Haiku 4.5 | `/model` — since v2.1.153 the choice is saved as the default for new sessions; press `s` for session-only |
 | **Agent Teams** | Coordinate multiple agents on tasks | Enable with `CLAUDE_AGENT_TEAMS=1` env var |
-| **Dynamic Workflows** *(v2.1.154)* | Deterministic multi-agent orchestration | `/workflows` to view runs; ask Claude to create one |
+| **Dynamic Workflows** *(v2.1.154)* | Deterministic multi-agent orchestration; since v2.1.219 the default size guideline is medium (aim for fewer than 15 agents) | `/workflows` to view runs; ask Claude to create one; change the size via **Dynamic workflow size** in `/config` |
 | **Scheduled Tasks** | Recurring tasks with `/loop` | `/loop 5m /command` or CronCreate tool |
 | **Chrome Integration** | Browser automation | `--chrome` flag or `/chrome` command |
 | **Keyboard Customization** | Custom keybindings | `/keybindings` command |
@@ -410,7 +410,7 @@ cp -r 03-skills/code-review-specialist ~/.claude/skills/
 | **/verify** *(v2.1.145+)* | Build, run, and observe the app to confirm a fix works (explicit invocation only since v2.1.215 — Claude won't trigger this on its own) | `/verify` |
 | **/run-skill-generator** *(v2.1.145+)* | Teach `/run`/`/verify` how to handle a specific project | `/run-skill-generator` |
 | **Subagent Output Scanning** *(v2.1.210+)* | Scans subagent reports for prompt-injection patterns and neutralizes them | On by default, no opt-out |
-| **Session-Wide Spawn Caps** *(v2.1.212, extended v2.1.217)* | 200/session limits on WebSearch calls and subagent spawns; v2.1.217 added a concurrent-subagent cap (default 20) and turned nested subagent spawning off by default (previously allowed up to 5 levels since v2.1.172) | `CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION`, `CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION`, `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` (default 20), `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` (opt back into nesting); `/clear` resets |
+| **Session-Wide Spawn Caps** *(v2.1.212, extended v2.1.219)* | 200/session limits on WebSearch calls and subagent spawns; concurrent-subagent cap (default 20) added in v2.1.217; since v2.1.219 subagents can spawn nested subagents up to **depth 3 by default** (v2.1.217 had disabled nesting) | `CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION`, `CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION`, `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` (default 20), `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` (default 3; set 1 to disable); `/clear` resets |
 | **Screen Reader Mode** *(v2.1.208)* | Plain-text rendering mode for screen readers | `--ax-screen-reader` flag, `CLAUDE_AX_SCREEN_READER=1`, or `"axScreenReader": true` in settings |
 
 ---
@@ -514,9 +514,12 @@ Getting started checklist:
 
 ---
 
-**Last Updated**: 2026-07-22
-**Claude Code Version**: 2.1.217
+**Last Updated**: July 29, 2026
+**Claude Code Version**: 2.1.220
 **Sources**:
 - https://code.claude.com/docs/en/cli-reference
 - https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md
-**Compatible Models**: Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5
+- https://code.claude.com/docs/en/sub-agents
+- https://code.claude.com/docs/en/model-config
+- https://code.claude.com/docs/en/settings
+**Compatible Models**: Claude Opus 5, Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5

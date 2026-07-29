@@ -235,7 +235,7 @@ Subagent-based verification hooks that spawn a dedicated agent to evaluate condi
 
 ## Hook Events
 
-Claude Code supports **30 hook events**:
+Claude Code supports **31 hook events**:
 
 | Event | When Triggered | Matcher Input | Can Block | Common Use |
 |-------|---------------|---------------|-----------|------------|
@@ -261,6 +261,7 @@ Claude Code supports **30 hook events**:
 | **TaskCreated** | Task created via TaskCreate | (none) | No | Task tracking, logging |
 | **ConfigChange** | Config file changes | (none) | Yes (except policy) | React to config updates |
 | **CwdChanged** | Working directory changes | (none) | No | Directory-specific setup |
+| **DirectoryAdded** | New working directory registered mid-session via `/add-dir` or the SDK `register_repo_root` control request (v2.1.219) | (none) | No | Set up tooling for a newly added directory |
 | **FileChanged** | Watched file changes | (none) | No | File monitoring, rebuild |
 | **PreCompact** | Before context compaction | manual/auto | No | Pre-compact actions |
 | **PostCompact** | After compaction completes | (none) | No | Post-compact actions |
@@ -557,6 +558,8 @@ hooks:
   # The above Stop hook auto-converts to SubagentStop for this subagent
 ---
 ```
+
+**Workspace trust required (v2.1.218):** Frontmatter hooks in a **project** subagent now require workspace trust acceptance for the folder the agent file came from before they run. Before v2.1.218, these hooks could run from folders you hadn't trusted. See the [subagents documentation](https://code.claude.com/docs/en/sub-agents#hooks-in-subagent-frontmatter) for which scopes are exempt.
 
 ## PermissionRequest Event
 
@@ -1509,8 +1512,9 @@ Edit `~/.claude/settings.json` or `.claude/settings.json` with the hook configur
 
 ---
 
-**Last Updated**: 2026-07-22
-**Claude Code Version**: 2.1.217
+**Last Updated**: July 29, 2026
+**Claude Code Version**: 2.1.220
 **Sources**:
 - https://code.claude.com/docs/en/hooks
 - https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md
+- https://code.claude.com/docs/en/sub-agents

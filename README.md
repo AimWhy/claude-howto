@@ -210,7 +210,7 @@ The official docs are a feature reference. This guide is a tutorial with diagram
 11-13 hours for the full path. But you'll get immediate value in 15 minutes — just copy a slash command template and try it.
 
 **Can I use this with Claude Sonnet / Haiku / Opus?**
-Yes. All templates work with Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, and Claude Haiku 4.5.
+Yes. All templates work with Claude Opus 5, Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, and Claude Haiku 4.5.
 
 **Can I contribute?**
 Absolutely. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. We welcome new examples, bug fixes, documentation improvements, and community templates.
@@ -871,8 +871,8 @@ MIT License - see [LICENSE](LICENSE). Free to use, modify, and distribute. The o
 
 ---
 
-**Last Updated**: 2026-07-22
-**Claude Code Version**: 2.1.217
+**Last Updated**: July 29, 2026
+**Claude Code Version**: 2.1.220
 **Sources**:
 - https://code.claude.com/docs/en/overview
 - https://code.claude.com/docs/en/changelog
@@ -880,4 +880,6 @@ MIT License - see [LICENSE](LICENSE). Free to use, modify, and distribute. The o
 - https://platform.claude.com/docs/en/about-claude/models/overview
 - https://github.com/anthropics/claude-code/releases
 - https://github.com/anthropics/claude-code/releases/tag/v2.1.154
-**Compatible Models**: Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5
+- https://code.claude.com/docs/en/model-config
+- https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md
+**Compatible Models**: Claude Opus 5, Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5

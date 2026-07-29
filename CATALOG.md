@@ -7,7 +7,7 @@
 
 > Quick reference guide to all Claude Code features: commands, agents, skills, plugins, and hooks.
 
-**Navigation**: [Commands](#slash-commands) | [Permission Modes](#permission-modes) | [Subagents](#subagents) | [Skills](#skills) | [Plugins](#plugins) | [MCP Servers](#mcp-servers) | [Hooks](#hooks) | [Memory](#memory-files) | [New Features](#new-features-may-2026)
+**Navigation**: [Commands](#slash-commands) | [Permission Modes](#permission-modes) | [Subagents](#subagents) | [Skills](#skills) | [Plugins](#plugins) | [MCP Servers](#mcp-servers) | [Hooks](#hooks) | [Memory](#memory-files) | [New Features](#new-features)
 
 ---
 
@@ -88,7 +88,7 @@ Commands are user-invoked shortcuts that execute specific actions.
 | `/stats` | Shortcut alias that opens the stats tab of `/usage` (v2.1.118+) | Review session metrics |
 | `/statusline` | Configure status line | Customize status display |
 | `/stickers` | View session stickers | Fun rewards |
-| `/fast` | Toggle fast output mode | Speed up responses |
+| `/fast` | Toggle fast output mode; applies to **Opus 5 and Opus 4.8** (v2.1.219) | Speed up responses |
 | `/terminal-setup` | Configure terminal integration | Setup terminal features |
 | `/undo` | Alias for `/rewind` (v2.1.108) | Same as `/rewind` |
 | `/upgrade` | Check for updates | Version management |
@@ -144,7 +144,7 @@ Claude Code supports 6 permission modes that control how tool use is authorized.
 
 Specialized AI assistants with isolated contexts for specific tasks.
 
-> **Nested spawning is opt-in (v2.1.217)**: As of v2.1.217, subagents do not spawn their own subagents by default. Set `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` to allow nesting, up to the depth you configure. (From v2.1.172 through v2.1.216, subagents nested by default, up to 5 levels deep; v2.1.217 made that opt-in.) See [04-subagents/README.md](04-subagents/README.md#restrict-spawnable-subagents) for the `Agent(agent_type)` syntax that restricts which subagents a given subagent may spawn.
+> **Nested spawning is on by default, depth 3 (v2.1.219)**: Subagents can spawn their own subagents up to three layers below the main conversation. Set `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` to change the limit, or `1` to disable nesting. (History: v2.1.172–v2.1.216 nested by default up to 5 layers with no way to change it; v2.1.217 made nesting opt-in at depth 1; v2.1.219 set the default to 3.) See [04-subagents/README.md](04-subagents/README.md#restrict-spawnable-subagents) for the `Agent(agent_type)` syntax that restricts which subagents a given subagent may spawn.
 
 ### Built-in Subagents
 
@@ -250,7 +250,7 @@ cp -r 03-skills/* ~/.claude/skills/
 | `/loop` | Run prompts on interval | Recurring tasks |
 | `/run` *(v2.1.145+)* | Launch this project's app to see a change running | Verifying a change in the real app |
 | `/run-skill-generator` *(v2.1.145+)* | Teach `/run`/`/verify` how to handle a specific project | First-time project setup for `/run` |
-| `/code-review` | Review the current diff for correctness bugs at a chosen effort level (e.g. `/code-review high`); pass `--comment` to post findings as inline PR comments | After writing code, before landing a PR |
+| `/code-review` | Review the current diff for correctness bugs at a chosen effort level (e.g. `/code-review high`); pass `--comment` to post findings as inline PR comments. Runs as a **background subagent** since v2.1.218, so review output no longer fills the conversation and stacked slash commands remain its review target | After writing code, before landing a PR |
 | `/simplify` *(distinct again since v2.1.154)* | Cleanup-only review (reuse / simplification / efficiency / altitude) that applies the fixes; does not hunt bugs | Tidying code without a bug hunt |
 | `/verify` *(v2.1.145+)* | Build, run, and observe the app to confirm a fix works | Validating a fix end-to-end |
 
@@ -451,7 +451,7 @@ cp 02-memory/personal-CLAUDE.md ~/.claude/CLAUDE.md
 
 ---
 
-## New Features (May 2026)
+## New Features
 
 | Feature | Description | How to Use |
 |---------|-------------|------------|
@@ -485,7 +485,7 @@ cp 02-memory/personal-CLAUDE.md ~/.claude/CLAUDE.md
 | **Plugin LSP Support** | Language Server Protocol integration via plugins | Configure LSP servers in `plugin.json` for editor features |
 | **Managed Drop-ins** | Organization-managed drop-in configurations (v2.1.83) | Admin-configured via managed policies; auto-applied to all users |
 | **`claude plugin init`** | Scaffold a new plugin in `.claude/skills`; such plugins auto-load with no marketplace (v2.1.157) | Run `claude plugin init <name>` |
-| **Auto Mode on Bedrock/Vertex/Foundry** | Auto mode available on third-party providers for Opus 4.7/4.8 — opt-in (v2.1.158) | Set `CLAUDE_CODE_ENABLE_AUTO_MODE=1` |
+| **Auto Mode on third-party providers** | Available by default on Amazon Bedrock, Google Cloud's Agent Platform, Microsoft Foundry, and signed-in Claude apps gateway sessions, where the supported models are Claude Sonnet 5, Opus 4.7 or later (which includes Opus 5), and Fable 5 (opt-in required v2.1.158–v2.1.206; removed in v2.1.207 — `CLAUDE_CODE_ENABLE_AUTO_MODE` is still accepted but has no effect) | `Shift+Tab` to cycle to it, or `--permission-mode auto` |
 
 ---
 
@@ -545,8 +545,8 @@ chmod +x ~/.claude/hooks/*.sh
 
 ---
 
-**Last Updated**: July 22, 2026
-**Claude Code Version**: 2.1.217
+**Last Updated**: July 29, 2026
+**Claude Code Version**: 2.1.220
 **Sources**:
 - https://code.claude.com/docs/en/sub-agents
 - https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md
@@ -560,4 +560,6 @@ chmod +x ~/.claude/hooks/*.sh
 - https://github.com/anthropics/claude-code/releases/tag/v2.1.154
 - https://code.claude.com/docs/en/plugins
 - https://code.claude.com/docs/en/cli-reference
-**Compatible Models**: Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5
+- https://code.claude.com/docs/en/model-config
+- https://code.claude.com/docs/en/skills
+**Compatible Models**: Claude Opus 5, Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5
