@@ -323,7 +323,7 @@ description: 启动包含安全和测试检查的完整 PR 审查
 ---
 name: security-reviewer
 description: 面向安全的代码审查
-tools: read, grep, diff
+tools: Read, Grep, Bash
 ---
 
 # Security Reviewer
@@ -747,7 +747,7 @@ claude --plugin-dir ./my-plugin --plugin-dir ./another-plugin
 ```
 
 ## 要求
-- Claude Code 1.0+
+- Claude Code 2.1+
 - GitHub 访问权限
 - CodeQL（可选）
 ```

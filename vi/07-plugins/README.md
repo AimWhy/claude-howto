@@ -336,7 +336,7 @@ Lệnh này khởi tạo một pull request review hoàn chỉnh bao gồm:
 ---
 name: security-reviewer
 description: Security-focused code review
-tools: read, grep, diff
+tools: Read, Grep, Bash
 ---
 
 # Security Reviewer
@@ -760,7 +760,7 @@ Workflow PR review hoàn chỉnh với các kiểm tra bảo mật, testing, và
 ```
 
 ## Yêu Cầu
-- Claude Code 1.0+
+- Claude Code 2.1+
 - Truy cập GitHub
 - CodeQL (tùy chọn)
 ```
