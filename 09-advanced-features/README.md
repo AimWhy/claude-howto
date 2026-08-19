@@ -1162,6 +1162,10 @@ claude -r "auth-refactor"
 claude --resume auth-refactor --fork-session "alternative approach"
 ```
 
+### Usage-Limit Auto-Continue (v2.1.234)
+
+As of **v2.1.234**, a session blocked on a claude.ai usage limit auto-continues once that limit resets — no manual re-prompt needed. Toggle this from `/config` under "Continue automatically at usage limit."
+
 ### Session Recap (v2.1.108)
 
 When you return to a session after being away, Claude can show a brief recap of what was accomplished. This is enabled by default for users with telemetry disabled (Bedrock, Vertex, Foundry users).
@@ -2385,6 +2389,7 @@ These keys go in `~/.claude/settings.json` (or a project `.claude/settings.json`
 | `enableArtifact` | Per-user enable/disable of the Artifact tool (v2.1.196). |
 | `crossSessionInbound` | (v2.1.224) How inbound [cross-session messages](#cross-session-messaging) are handled — `"accept"`, `"hold"`, or `"refuse"`. Project and local values apply only when *stricter* on the `accept < hold < refuse` ladder. Exposed in `/config` as "Messages from your other sessions" since v2.1.232. |
 | `dialogExpiry` | (v2.1.224) How long an unanswered dialog stays open. Default `"5m"`; accepts `"60s"`, `"5m"`, `"10m"`, or `"never"`. Overridden by `CLAUDE_CODE_USER_DIALOG_TIMEOUT_MS`. Exposed in `/config` as "Dialog expiry" since v2.1.232. |
+| `spellcheck` | (v2.1.235) Underlines misspelled words in the prompt input using whichever of `aspell`, `hunspell`, or `ispell` is on your `PATH`, tried in that order. Object-valued — `{"enabled": true, "language": "en_GB"}` — and off by default. **Read from user settings, the `--settings` flag, and managed settings only**: a `spellcheck` block in a project `.claude/settings.json` or `.claude/settings.local.json` is ignored. |
 
 ### Fallback Models (`fallbackModel`)
 
@@ -2474,7 +2479,7 @@ export CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION=200         # Cap on WebSearch t
 # Accessibility (v2.1.208)
 export CLAUDE_AX_SCREEN_READER=1                            # Enable plain-text screen reader rendering mode. Same effect as --ax-screen-reader or "axScreenReader": true in settings.
 
-# Newer variables (v2.1.221–v2.1.233) — changelog-sourced; the CLI reference has no env-var section
+# Newer variables (v2.1.221–v2.1.234) — changelog-sourced; the CLI reference has no env-var section
 export CLAUDE_CODE_ENABLE_TODO_TOOLS=1                      # (v2.1.233) Restore the todo/task-tracking tools (TaskCreate/Get/Update/List, TodoWrite), which are off on Opus 4.8, Sonnet 5, Fable 5, Mythos 5, and newer models
 export CLAUDE_CODE_WEBFETCH_CACHE_TTL_MS=900000             # (v2.1.233) WebFetch URL cache TTL. Default 15 minutes.
 export CLAUDE_CODE_TOOL_MEMORY_LIMIT=2G                     # (v2.1.233, Linux) Opt-in memory cgroup applied to Bash commands
@@ -2482,6 +2487,8 @@ export ANTHROPIC_BEDROCK_REGION_PREFIX=us                   # (v2.1.224) Prefer 
 export CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT=1  # (v2.1.223) Restore pre-v2.1.223 auto-compact behavior on unrecognized model IDs
 export CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS=0             # (v2.1.229) Disable prefix staggering on dynamic-workflow fan-out
 export CLAUDE_CODE_USER_DIALOG_TIMEOUT_MS=300000            # (v2.1.224) Overrides the dialogExpiry setting
+export CLAUDE_CODE_PROJECT_DIR_NAME=my-app                  # (v2.1.234) Short name for the per-project transcript directory, for hosts that give each session its own config directory
+export CLAUDE_CODE_GOAL_CHECKIN_MINUTES=30                  # (v2.1.234) Minutes a background task may stall before Claude checks in while a /goal is active. Set 0 to disable check-ins.
 ```
 
 > **v2.1.223 — `CLAUDE_CODE_DISABLE_1M_CONTEXT` widened**: the variable now holds **every**
@@ -2684,8 +2691,8 @@ For more information about Claude Code and related features:
 
 ---
 
-**Last Updated**: August 15, 2026
-**Claude Code Version**: 2.1.233
+**Last Updated**: August 19, 2026
+**Claude Code Version**: 2.1.235
 **Sources**:
 - https://code.claude.com/docs/en/settings
 - https://code.claude.com/docs/en/sandboxing
@@ -2694,4 +2701,5 @@ For more information about Claude Code and related features:
 - https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md
 - https://code.claude.com/docs/en/model-config
 - https://code.claude.com/docs/en/permission-modes
+- https://code.claude.com/docs/en/settings.md
 **Compatible Models**: Claude Fable 5, Claude Opus 5, Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5
