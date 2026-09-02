@@ -20,9 +20,9 @@
 | **Skills** | 10 bundled | 6 | 16 | [03-skills/](03-skills/) |
 | **Plugins** | - | 3 | 3 | [07-plugins/](07-plugins/) |
 | **MCP Servers** | 1 | 4 | 5 | [05-mcp/](05-mcp/) |
-| **Hooks** | 31 events | 11 | 42 | [06-hooks/](06-hooks/) |
+| **Hooks** | 33 events | 11 | 44 | [06-hooks/](06-hooks/) |
 | **Memory** | 7 types | 3 | 10 | [02-memory/](02-memory/) |
-| **Total** | **115** | **44** | **159** | |
+| **Total** | **117** | **44** | **161** | |
 
 ---
 
@@ -291,7 +291,7 @@ Bundled collections of commands, agents, MCP servers, and hooks.
 /plugin list              # List installed plugins
 /plugin install <name>    # Install plugin
 /plugin remove <name>     # Remove plugin
-/plugin update <name>     # Update plugin
+claude plugin update <name>   # Update a plugin (CLI; the /plugin update slash form is referenced in prose but not in the command reference)
 ```
 
 ---
@@ -361,6 +361,7 @@ Event-driven automation that executes shell commands on Claude Code events.
 | `PostToolUseFailure` | Tool execution fails | After tool error | Error handling, logging |
 | `PostToolBatch` | After a batch of tool uses completes | End of a tool batch | Aggregate reporting, batched validation |
 | `Notification` | Notification sent | Claude sends notification | External alerts |
+| `MessageDisplay` | Assistant message text is displayed | While the message renders | Transform or hide displayed text |
 | `SubagentStart` | Subagent spawned | Subagent task starts | Initialize subagent context |
 | `SubagentStop` | Subagent finishes | Subagent task complete | Chain actions |
 | `Stop` | Claude finishes responding | Response complete | Cleanup, reporting |
@@ -370,9 +371,12 @@ Event-driven automation that executes shell commands on Claude Code events.
 | `TaskCreated` | Task created via TaskCreate (only fires when the todo tools are enabled — see [Hooks](06-hooks/README.md#hook-events)) | New task created | Task tracking, logging |
 | `ConfigChange` | Configuration updated | Settings modified | React to config changes |
 | `CwdChanged` | Working directory changes | Directory changed | Directory-specific setup |
+| `DirectoryAdded` | New working directory registered mid-session | `/add-dir` or SDK `register_repo_root` | Set up tooling for the new directory |
 | `FileChanged` | Watched file changes | File modified | File monitoring, rebuild |
 | `PreCompact` | Before compact operation | Context compression | State preservation |
 | `PostCompact` | After compaction completes | Compaction done | Post-compact actions |
+| `PreModelSwitch` | Before a requested model switch is applied | Model switch requested | Gate or veto model changes |
+| `PostModelSwitch` | After the session's model changes | Model switch completed | Log or react to model changes |
 | `WorktreeCreate` | Worktree being created | Git worktree created | Setup worktree environment |
 | `WorktreeRemove` | Worktree being removed | Git worktree removed | Cleanup worktree resources |
 | `Elicitation` | MCP server requests input | MCP elicitation | Input validation |
@@ -507,6 +511,7 @@ cp 02-memory/personal-CLAUDE.md ~/.claude/CLAUDE.md
 | **`/design`** | Design canvas — a multi-artboard visual design (UI mockups, screen flows, landing pages, posters) built on artifacts and refined visually rather than in code. Research preview; requires v2.1.233+; Pro/Max/Team/Enterprise | Run `/design` in the CLI or the Desktop app. See [Slash Commands](01-slash-commands/README.md) |
 | **`notify_when_idle`** | Cross-session `SendMessage` input that asks another session on the same machine to send one notice when it next goes idle — opt-in, one-shot, no polling (v2.1.236). Related: `ListAgents` reports the session's own name and lists live teammates, and Windows gained cross-session messaging (v2.1.239) | Pass `notify_when_idle` to `SendMessage`. See [Advanced Features](09-advanced-features/README.md#cross-session-messaging) |
 | **Plugin manifest fields** | `plugin.json` accepts `workflows`, `channels`, `dependencies` (semver), `outputStyles`, `keywords`, `metadata`, `lspServers`, and `experimental.themes` / `experimental.monitors`. CLI gained `claude plugin new`, `remove`/`rm`, `prune`/`autoremove`, and the flags `--with`, `-f`/`--force`, `--available`, `--push`, `--dry-run` | See [Plugins](07-plugins/README.md) |
+| **Restricted Mode** | Removes the built-in tools that run commands or code (Bash, PowerShell, REPL) and WebFetch unless `--tools` names them; ignores user, project, and local settings (managed settings and `--settings` still apply); confines file tools to the working directories; refuses `bypassPermissions`; and refuses to create cloud sessions (v2.1.248+) | `claude --restricted`, or `CLAUDE_CODE_RESTRICTED=1`. See [CLI](10-cli/README.md) |
 
 ---
 
@@ -566,8 +571,8 @@ chmod +x ~/.claude/hooks/*.sh
 
 ---
 
-**Last Updated**: August 25, 2026
-**Claude Code Version**: 2.1.245
+**Last Updated**: September 2, 2026
+**Claude Code Version**: 2.1.257
 **Sources**:
 - https://code.claude.com/docs/en/sub-agents
 - https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md
@@ -586,4 +591,5 @@ chmod +x ~/.claude/hooks/*.sh
 - https://code.claude.com/docs/en/plugin-marketplaces
 - https://code.claude.com/docs/en/discover-plugins
 - https://code.claude.com/docs/en/settings
-**Compatible Models**: Claude Fable 5, Claude Opus 5, Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5
+- https://code.claude.com/docs/en/plugins-reference
+**Compatible Models**: Claude Fable 5.1, Claude Fable 5, Claude Opus 5, Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5
