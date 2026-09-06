@@ -1,6 +1,6 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="resources/logos/claude-howto-logo-dark.svg">
-  <img alt="Claude How To" src="resources/logos/claude-howto-logo.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="../resources/logos/claude-howto-logo-dark.svg">
+  <img alt="Claude How To" src="../resources/logos/claude-howto-logo.svg">
 </picture>
 
 <p align="center">
@@ -154,7 +154,7 @@ cp 01-slash-commands/optimize.md /path/to/your-project/.claude/commands/
 cp 02-memory/project-CLAUDE.md /path/to/your-project/CLAUDE.md
 
 # 5. 安装一个 skill：
-cp -r 03-skills/code-review ~/.claude/skills/
+cp -r 03-skills/code-review-specialist ~/.claude/skills/
 ```
 
 如果你想完成更完整的基础配置，这里有一个**1 小时的关键配置方案**：
@@ -167,7 +167,7 @@ cp 01-slash-commands/*.md .claude/commands/
 cp 02-memory/project-CLAUDE.md ./CLAUDE.md
 
 # 安装一个 skill（15 分钟）
-cp -r 03-skills/code-review ~/.claude/skills/
+cp -r 03-skills/code-review-specialist ~/.claude/skills/
 
 # 周末目标：继续添加 hooks、subagents、MCP 和 plugins
 # 按学习路径逐步完成配置
@@ -206,7 +206,7 @@ cp -r 03-skills/code-review ~/.claude/skills/
 完整路径大约需要 11 到 13 小时。但你在 15 分钟内就能获得直接收益，只要复制一个 slash command 模板并试用即可。
 
 **我可以搭配 Claude Sonnet / Haiku / Opus 使用吗？**
-可以。所有模板都适用于 Claude Sonnet 4.6、Claude Opus 4.6 和 Claude Haiku 4.5。
+可以。所有模板都适用于 Claude Fable 5、Claude Opus 5、Claude Sonnet 5、Claude Sonnet 4.6、Claude Opus 4.8、Claude Haiku 4.5。
 
 **我可以参与贡献吗？**
 当然可以。请查看 [CONTRIBUTING.md](CONTRIBUTING.md) 了解贡献规范。我们欢迎新的示例、bug 修复、文档改进以及社区模板。
@@ -276,7 +276,7 @@ cp 01-slash-commands/*.md .claude/commands/
 cp 02-memory/project-CLAUDE.md ./CLAUDE.md
 
 # Skills
-cp -r 03-skills/code-review ~/.claude/skills/
+cp -r 03-skills/code-review-specialist ~/.claude/skills/
 
 # Subagents
 cp 04-subagents/*.md .claude/agents/
@@ -376,10 +376,10 @@ cp 02-memory/personal-CLAUDE.md ~/.claude/CLAUDE.md
 **安装**:
 ```bash
 # 个人 skills
-cp -r 03-skills/code-review ~/.claude/skills/
+cp -r 03-skills/code-review-specialist ~/.claude/skills/
 
 # 项目 skills
-cp -r 03-skills/code-review /path/to/project/.claude/skills/
+cp -r 03-skills/code-review-specialist /path/to/project/.claude/skills/
 ```
 
 **使用方法**: 在相关场景下自动触发
@@ -478,11 +478,13 @@ chmod +x ~/.claude/hooks/*.sh
 
 **使用方法**: hooks 会在事件发生时自动执行
 
-**Hook 类型**（4 类，25 个事件）:
-- **工具 Hook**: `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionRequest`
-- **会话 Hook**: `SessionStart`, `SessionEnd`, `Stop`, `StopFailure`, `SubagentStart`, `SubagentStop`
-- **任务 Hook**: `UserPromptSubmit`, `TaskCompleted`, `TaskCreated`, `TeammateIdle`
-- **生命周期 Hook**: `ConfigChange`, `CwdChanged`, `FileChanged`, `PreCompact`, `PostCompact`, `WorktreeCreate`, `WorktreeRemove`, `Notification`, `InstructionsLoaded`, `Elicitation`, `ElicitationResult`
+**Hook 类型**（5 种）：`command`、`http`、`prompt`、`mcp_tool`、`agent` — 决定 hook 如何运行。
+
+**Hook 事件**（33 个，分 4 类）— 决定 hook 何时运行:
+- **工具 Hook**: `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PostToolBatch`, `PermissionRequest`, `PermissionDenied`
+- **会话 Hook**: `SessionStart`, `Setup`, `SessionEnd`, `Stop`, `StopFailure`, `SubagentStart`, `SubagentStop`
+- **任务 Hook**: `UserPromptSubmit`, `UserPromptExpansion`, `MessageDisplay`, `TaskCompleted`, `TaskCreated`, `TeammateIdle`（`TaskCompleted` 和 `TaskCreated` 仅在启用 todo 工具时触发 —— 在 Opus 4.8、Sonnet 5、Fable 5、Mythos 5 及更新模型上默认关闭；`CLAUDE_CODE_ENABLE_TODO_TOOLS=1` 可恢复）
+- **生命周期 Hook**: `ConfigChange`, `CwdChanged`, `DirectoryAdded`, `FileChanged`, `PreCompact`, `PostCompact`, `PreModelSwitch`, `PostModelSwitch`, `WorktreeCreate`, `WorktreeRemove`, `Notification`, `InstructionsLoaded`, `Elicitation`, `ElicitationResult`
 
 </details>
 
@@ -876,6 +878,9 @@ MIT 许可证，详见 [LICENSE](LICENSE)。你可以自由使用、修改和分
 
 ---
 
-**最后更新**：2026 年 3 月
-**Claude Code 版本**：2.1+
-**兼容模型**：Claude Sonnet 4.6、Claude Opus 4.6、Claude Haiku 4.5
+**最后更新**：2026 年 9 月 2 日
+**Claude Code 版本**：2.1.257
+**来源**：
+- https://code.claude.com/docs/en/hooks
+- https://code.claude.com/docs/en/model-config
+**兼容模型**：Claude Fable 5、Claude Opus 5、Claude Sonnet 5、Claude Sonnet 4.6、Claude Opus 4.8、Claude Haiku 4.5

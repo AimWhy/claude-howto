@@ -137,7 +137,7 @@ cp 01-slash-commands/optimize.md /path/to/your-project/.claude/commands/
 cp 02-memory/project-CLAUDE.md /path/to/your-project/CLAUDE.md
 
 # 5. Встановіть навичку:
-cp -r 03-skills/code-review ~/.claude/skills/
+cp -r 03-skills/code-review-specialist ~/.claude/skills/
 ```
 
 Хочете повне налаштування? Ось **необхідне за 1 годину**:
@@ -150,7 +150,7 @@ cp 01-slash-commands/*.md .claude/commands/
 cp 02-memory/project-CLAUDE.md ./CLAUDE.md
 
 # Встановити навичку (15 хв)
-cp -r 03-skills/code-review ~/.claude/skills/
+cp -r 03-skills/code-review-specialist ~/.claude/skills/
 
 # Ціль на вихідні: додати хуки, субагенти, MCP та плагіни
 # Слідуйте навчальному шляху для керованого налаштування
@@ -187,7 +187,7 @@ cp -r 03-skills/code-review ~/.claude/skills/
 11-13 годин для повного шляху. Але ви отримаєте цінність за 15 хвилин — просто скопіюйте шаблон слеш-команди та спробуйте.
 
 **Чи працює це з Claude Sonnet / Haiku / Opus?**
-Так. Усі шаблони працюють з Claude Sonnet 4.6, Claude Opus 4.6 та Claude Haiku 4.5.
+Так. Усі шаблони працюють з Claude Fable 5, Claude Opus 5, Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5.
 
 **Чи можна долучитися?**
 Звичайно. Див. [CONTRIBUTING.md](CONTRIBUTING.md) для настанов. Ми вітаємо нові приклади, виправлення, покращення документації та шаблони спільноти.
@@ -256,7 +256,7 @@ cp 01-slash-commands/*.md .claude/commands/
 cp 02-memory/project-CLAUDE.md ./CLAUDE.md
 
 # Навички
-cp -r 03-skills/code-review ~/.claude/skills/
+cp -r 03-skills/code-review-specialist ~/.claude/skills/
 
 # Субагенти
 cp 04-subagents/*.md .claude/agents/
@@ -354,10 +354,10 @@ cp 02-memory/personal-CLAUDE.md ~/.claude/CLAUDE.md
 **Встановлення**:
 ```bash
 # Персональні навички
-cp -r 03-skills/code-review ~/.claude/skills/
+cp -r 03-skills/code-review-specialist ~/.claude/skills/
 
 # Навички проєкту
-cp -r 03-skills/code-review /path/to/project/.claude/skills/
+cp -r 03-skills/code-review-specialist /path/to/project/.claude/skills/
 ```
 
 **Використання**: Автоматично викликаються за потреби
@@ -438,11 +438,13 @@ chmod +x ~/.claude/hooks/*.sh
 
 **Використання**: Хуки виконуються автоматично за подіями
 
-**Типи хуків** (4 типи, 25 подій):
-- **Хуки інструментів**: `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionRequest`
-- **Хуки сесій**: `SessionStart`, `SessionEnd`, `Stop`, `StopFailure`, `SubagentStart`, `SubagentStop`
-- **Хуки завдань**: `UserPromptSubmit`, `TaskCompleted`, `TaskCreated`, `TeammateIdle`
-- **Хуки життєвого циклу**: `ConfigChange`, `CwdChanged`, `FileChanged`, `PreCompact`, `PostCompact`, `WorktreeCreate`, `WorktreeRemove`, `Notification`, `InstructionsLoaded`, `Elicitation`, `ElicitationResult`
+**Типи хуків** (5): `command`, `http`, `prompt`, `mcp_tool`, `agent` — як саме виконується хук.
+
+**Події хуків** (33, у 4 категоріях) — коли він виконується:
+- **Хуки інструментів**: `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PostToolBatch`, `PermissionRequest`, `PermissionDenied`
+- **Хуки сесій**: `SessionStart`, `Setup`, `SessionEnd`, `Stop`, `StopFailure`, `SubagentStart`, `SubagentStop`
+- **Хуки завдань**: `UserPromptSubmit`, `UserPromptExpansion`, `MessageDisplay`, `TaskCompleted`, `TaskCreated`, `TeammateIdle` (`TaskCompleted` і `TaskCreated` спрацьовують лише коли увімкнені todo-інструменти — типово вимкнені на Opus 4.8, Sonnet 5, Fable 5, Mythos 5 і новіших; `CLAUDE_CODE_ENABLE_TODO_TOOLS=1` повертає їх)
+- **Хуки життєвого циклу**: `ConfigChange`, `CwdChanged`, `DirectoryAdded`, `FileChanged`, `PreCompact`, `PostCompact`, `PreModelSwitch`, `PostModelSwitch`, `WorktreeCreate`, `WorktreeRemove`, `Notification`, `InstructionsLoaded`, `Elicitation`, `ElicitationResult`
 
 </details>
 
@@ -657,6 +659,9 @@ Claude:
 
 ---
 
-**Останнє оновлення**: Квітень 2026
-**Версія Claude Code**: 2.1.97
-**Сумісні моделі**: Claude Sonnet 4.6, Claude Opus 4.6, Claude Haiku 4.5
+**Останнє оновлення**: 2 вересня 2026
+**Версія Claude Code**: 2.1.257
+**Джерела**:
+- https://code.claude.com/docs/en/hooks
+- https://code.claude.com/docs/en/model-config
+**Сумісні моделі**: Claude Fable 5, Claude Opus 5, Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5

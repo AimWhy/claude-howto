@@ -57,8 +57,14 @@ Hooks are configured in settings files with a specific structure:
 | `hooks` | Array of hook definitions | `[{ "type": "command", ... }]` |
 | `type` | Hook type: `"command"` (bash), `"prompt"` (LLM), `"http"` (webhook), `"mcp_tool"` (MCP tool invocation, v2.1.118+), or `"agent"` (subagent) | `"command"` |
 | `command` | Shell command to execute | `"$CLAUDE_PROJECT_DIR/.claude/hooks/format.sh"` |
-| `timeout` | Optional timeout in seconds (default 60) | `30` |
+| `timeout` | Optional timeout in seconds. Defaults: 600 for command/http/mcp_tool, 30 for prompt, 60 for agent. | `30` |
 | `once` | If `true`, run the hook only once per session | `true` |
+| `async` | If `true`, runs in the background without blocking | `true` |
+| `asyncRewake` | If `true`, runs in the background and wakes Claude on exit code 2. Implies `async`. | `true` |
+| `shell` | Accepts `"bash"` or `"powershell"`. Defaults to `"bash"`, or to `"powershell"` on Windows when Git Bash isn't installed. | `"bash"` |
+| `statusMessage` | Custom spinner message displayed while the hook runs | `"Formatting…"` |
+
+> **Note**: Some events lower the default timeout. `UserPromptSubmit` lowers the `command`, `http`, and `mcp_tool` default to 30 seconds, and `MessageDisplay` lowers it to 10 seconds. `SessionEnd` hooks share a 1.5-second budget; if your settings set a longer per-hook `timeout`, Claude Code raises that budget to match, up to 60 seconds.
 
 ### Matcher Patterns
 
@@ -66,8 +72,11 @@ Hooks are configured in settings files with a specific structure:
 |---------|-------------|---------|
 | Exact string | Matches specific tool | `"Write"` |
 | Regex pattern | Matches multiple tools | `"Edit\|Write"` |
+| Comma-separated | Matches any listed tool (v2.1.191+) | `"Write,Edit"` |
 | Wildcard | Matches all tools | `"*"` or `""` |
 | MCP tools | Server and tool pattern | `"mcp__memory__.*"` |
+
+> **Matchers are matched exactly (v2.1.195+).** A hyphenated identifier (for example an MCP tool name containing a hyphen) no longer accidentally substring-matches a different tool. Comma-separated matchers like `"Write,Edit"` fire on any tool in the list — earlier builds silently never fired them.
 
 **InstructionsLoaded matcher values:**
 
@@ -76,6 +85,47 @@ Hooks are configured in settings files with a specific structure:
 | `session_start` | Instructions loaded at session startup |
 | `nested_traversal` | Instructions loaded during nested directory traversal |
 | `path_glob_match` | Instructions loaded via path glob pattern matching |
+
+### Narrowing with `if` conditions (tool-argument paths)
+
+The `matcher` field selects a hook by **tool name** (`"Write"`, `"Edit|Write"`, `"*"`). To filter more narrowly by the tool's **arguments** — for example, to run a hook only when an edit touches `src/`, or to guard reads of secret files — add an `if` condition to an individual hook handler. This is distinct from the tool-name matcher: the `matcher` decides *which tool*, the `if` decides *which call*.
+
+`if` uses [permission-rule syntax](https://code.claude.com/docs/en/permissions) (`ToolName(pattern)`), evaluated against the tool name **and** its arguments together. For `Read`/`Edit`/`Write`, the path pattern follows gitignore semantics, with the same anchors as permission rules: a bare name like `.env` matches at any depth, `src/**` is relative to the current directory, `/src/**` to the project root, `~/...` to your home directory, and `//...` is an absolute filesystem path.
+
+The `if` field sits at the **hook-handler level** — a sibling of `type` and `command`, inside the `hooks` array — not on `matcher`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Edit(src/**)",
+            "command": "./hooks/lint-src.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Read(.env)",
+            "command": "./hooks/block-secret-read.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Examples of valid `if` patterns: `Edit(src/**)` (edits under `src/`), `Read(~/.ssh/**)` (reads of any SSH key), `Read(.env)` (any `.env` at or below the current directory), `Bash(git push *)` (only `git push` subcommands).
+
+> **v2.1.214 update**: A single-segment `dir/**` pattern in a hook `if` condition (like `Edit(src/**)`) now matches only `<cwd>/dir` — not that directory at any depth in the tree. Previously `src/**` also matched `foo/src/**`. Use `**/dir/**` if you need any-depth matching. **Important**: this narrowing applies only to hook `if:` conditions and allow-rule auto-approval — deny/ask permission rules still match `dir/**` at any depth.
 
 ## Hook Types
 
@@ -92,6 +142,22 @@ The default hook type. Executes a shell command and communicates via JSON stdin/
   "timeout": 60
 }
 ```
+
+#### Exec form (`args`)
+
+> Added in v2.1.139.
+
+Instead of the shell-form `"command": "..."`, a command hook can spawn a binary directly via `execve()` with an `args` array. There is no shell parsing, so path placeholders never need quoting and the configuration is immune to shell-injection bugs.
+
+```json
+{
+  "type": "command",
+  "args": ["python3", "$CLAUDE_PROJECT_DIR/.claude/hooks/validate.py", "--strict"],
+  "timeout": 60
+}
+```
+
+The two forms are **mutually exclusive** — a hook with both `command` and `args` set is rejected at config load. Use `command` when you need pipes, redirection, `&&` chaining, or shell expansions; use `args` when you are calling one binary with arguments.
 
 ### HTTP Hooks
 
@@ -159,6 +225,8 @@ The hook input (tool name, tool input, session context) is passed as the MCP too
 
 Subagent-based verification hooks that spawn a dedicated agent to evaluate conditions or perform complex checks. Unlike prompt hooks (single-turn LLM evaluation), agent hooks can use tools and perform multi-step reasoning.
 
+> **Note**: Agent hooks are experimental and may change.
+
 ```json
 {
   "type": "agent",
@@ -175,22 +243,23 @@ Subagent-based verification hooks that spawn a dedicated agent to evaluate condi
 
 ## Hook Events
 
-Claude Code supports **29 hook events**:
+Claude Code supports **33 hook events**:
 
 | Event | When Triggered | Matcher Input | Can Block | Common Use |
 |-------|---------------|---------------|-----------|------------|
-| **SessionStart** | Session begins/resumes/clear/compact | startup/resume/clear/compact | No | Environment setup |
+| **SessionStart** | Session begins/resumes/clear/compact | startup/resume/clear/compact/fork | No | Environment setup |
 | **Setup** | Initial environment setup (one-time per session) | (none) | No | Provision tooling, install deps |
 | **InstructionsLoaded** | After CLAUDE.md or rules file loaded | (none) | No | Modify/filter instructions |
 | **UserPromptSubmit** | User submits prompt | (none) | Yes | Validate prompts |
 | **UserPromptExpansion** | User prompt is expanded (e.g., `@` mentions, slash commands resolved) | (none) | Yes | Transform or inspect expanded prompt |
-| **PreToolUse** | Before tool execution | Tool name | Yes (allow/deny/ask) | Validate, modify inputs |
+| **PreToolUse** | Before tool execution | Tool name | Yes (allow/deny/ask/defer) | Validate, modify inputs |
 | **PermissionRequest** | Permission dialog shown | Tool name | Yes | Auto-approve/deny |
 | **PermissionDenied** | User denies a permission prompt | Tool name | No | Logging, analytics, policy enforcement |
 | **PostToolUse** | After tool succeeds | Tool name | No | Add context, feedback |
 | **PostToolUseFailure** | Tool execution fails | Tool name | No | Error handling, logging |
 | **PostToolBatch** | After a batch of tool uses completes | (none) | No | Aggregate reporting, batched validation |
 | **Notification** | Notification sent | Notification type | No | Custom notifications |
+| **MessageDisplay** | While assistant message text is displayed | (none) | No | Transform or hide displayed message text (v2.1.152) |
 | **SubagentStart** | Subagent spawned | Agent type name | No | Subagent setup |
 | **SubagentStop** | Subagent finishes | Agent type name | Yes | Subagent validation |
 | **Stop** | Claude finishes responding | (none) | Yes | Task completion check |
@@ -200,14 +269,26 @@ Claude Code supports **29 hook events**:
 | **TaskCreated** | Task created via TaskCreate | (none) | No | Task tracking, logging |
 | **ConfigChange** | Config file changes | (none) | Yes (except policy) | React to config updates |
 | **CwdChanged** | Working directory changes | (none) | No | Directory-specific setup |
+| **DirectoryAdded** | New working directory registered mid-session via `/add-dir` or the SDK `register_repo_root` control request (v2.1.219) | (none) | No | Set up tooling for a newly added directory |
 | **FileChanged** | Watched file changes | (none) | No | File monitoring, rebuild |
 | **PreCompact** | Before context compaction | manual/auto | No | Pre-compact actions |
 | **PostCompact** | After compaction completes | (none) | No | Post-compact actions |
+| **PreModelSwitch** | Before Claude Code applies a requested model switch | Canonical name of the model being switched to (from `to_model`) | Yes | Gate or veto model changes |
+| **PostModelSwitch** | After the session's model changes, including changes Claude Code makes itself (such as restoring the model on resume) | Canonical name of the model switched to (from `to_model`) | No | Log or react to model changes |
 | **WorktreeCreate** | Worktree being created | (none) | Yes (path return) | Worktree initialization |
 | **WorktreeRemove** | Worktree being removed | (none) | No | Worktree cleanup |
 | **Elicitation** | MCP server requests user input | (none) | Yes | Input validation |
 | **ElicitationResult** | User responds to elicitation | (none) | Yes | Response processing |
 | **SessionEnd** | Session terminates | (none) | No | Cleanup, final logging |
+
+`PreModelSwitch` and `PostModelSwitch` require v2.1.251 or later. Both receive `from_model` and `to_model`; the matcher is evaluated against the canonical name derived from `to_model` (e.g. `claude-opus-5`, `.*opus.*`). Their `command`, `http`, and `mcp_tool` timeout default is lowered to 30 seconds.
+
+> **`TaskCreated` and `TaskCompleted` need the todo tools enabled (v2.1.233).** These two
+> events fire from the todo/task-tracking tools (`TaskCreate`/`Get`/`Update`/`List`,
+> `TodoWrite`), which are **no longer available on Opus 4.8, Sonnet 5, Fable 5, Mythos 5,
+> and newer models**. On those models the hooks are still valid configuration but simply
+> never fire — you get no output and no error. Set `CLAUDE_CODE_ENABLE_TODO_TOOLS=1` to
+> bring the tools, and therefore the events, back.
 
 > **PostToolUse duration (v2.1.119):** `PostToolUse` and `PostToolUseFailure` hook inputs now include `duration_ms` — see the [PostToolUse](#posttooluse) section for details.
 
@@ -237,8 +318,13 @@ Runs after Claude creates tool parameters and before processing. Use this to val
 **Common matchers:** `Task`, `Bash`, `Glob`, `Grep`, `Read`, `Edit`, `Write`, `WebFetch`, `WebSearch`
 
 **Output control:**
-- `permissionDecision`: `"allow"`, `"deny"`, or `"ask"`
-- `permissionDecisionReason`: Explanation for decision
+- `permissionDecision`: `"allow"`, `"deny"`, `"ask"`, or `"defer"`
+  - `"allow"` skips the permission prompt (except for tools that require user interaction, and connector tools your organization set to `ask`)
+  - `"deny"` prevents the tool call
+  - `"ask"` prompts the user to confirm
+  - `"defer"` exits gracefully so the tool can be resumed later; `permissionDecisionReason`, `updatedInput` and `additionalContext` are all ignored for this value
+  - Deny and ask rules are still evaluated regardless of what the hook returns. When multiple `PreToolUse` hooks disagree, precedence is `deny` > `defer` > `ask` > `allow`
+- `permissionDecisionReason`: Explanation for decision. Shown to the user (not Claude) for `"allow"` and `"ask"`; shown to Claude for `"deny"`; ignored for `"defer"`
 - `updatedInput`: Modified tool input parameters
 
 ### PostToolUse
@@ -273,6 +359,31 @@ Runs immediately after tool completion. Use for verification, logging, or provid
 | Field | Type | Description |
 |-------|------|-------------|
 | `duration_ms` | number | Tool execution time in milliseconds. Excludes time spent in permission prompts and PreToolUse hook execution. Available on both `PostToolUse` and `PostToolUseFailure` hooks. |
+
+#### Recoverable blocks (`continueOnBlock`, v2.1.139)
+
+By default, a `PostToolUse` hook that returns `"decision": "block"` aborts the current turn. Set `"continueOnBlock": true` on the hook to instead surface the rejection back to Claude as a `tool_result`, so the model can read the feedback and retry or adjust.
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/policy-check.py",
+            "continueOnBlock": true
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Use this when the hook's `reason` is something Claude can act on (e.g., "this file is read-only; write somewhere else"); leave it off when a block must halt the turn entirely.
 
 ### UserPromptSubmit
 
@@ -326,6 +437,19 @@ Run when Claude finishes responding (Stop) or a subagent completes (SubagentStop
 }
 ```
 
+> **Safety cap on consecutive blocks (v2.1.143)**: If a `Stop` hook returns `"decision": "block"` (or sets `continue: false`) **8 times in a row** for the same turn, Claude Code short-circuits the loop and ends the session with a warning. Override the threshold with the env var `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=<integer>` (set to `0` to disable the cap entirely). This prevents a buggy Stop hook from looping the session forever.
+
+**Return field (v2.1.163):** A `Stop` or `SubagentStop` hook can return `hookSpecificOutput.additionalContext` to give Claude feedback and **continue the turn without surfacing an error label**. Previously, influencing the model from a Stop hook was awkward; now the hook can inject context cleanly, avoiding the error-label behavior of older feedback paths (such as `"decision": "block"`).
+
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "Stop",
+    "additionalContext": "Reminder: run the test suite before declaring done."
+  }
+}
+```
+
 ### SubagentStart
 
 Runs when a subagent begins execution. The matcher input is the agent type name, allowing hooks to target specific subagent types.
@@ -353,7 +477,9 @@ Runs when a subagent begins execution. The matcher input is the agent type name,
 
 Runs when session starts or resumes. Can persist environment variables.
 
-**Matchers:** `startup`, `resume`, `clear`, `compact`
+**Matchers:** `startup`, `resume`, `clear`, `compact`, `fork`
+
+> **v2.1.214 update**: A forked session now reports source `"fork"` — previously it reported `"resume"`.
 
 **Special feature:** Use `CLAUDE_ENV_FILE` to persist environment variables (also available in `CwdChanged` and `FileChanged` hooks):
 
@@ -364,6 +490,19 @@ if [ -n "$CLAUDE_ENV_FILE" ]; then
 fi
 exit 0
 ```
+
+**Session-scoped outputs (v2.1.152):** A `SessionStart` hook can return JSON to re-scan skills and set the session title:
+
+```json
+{
+  "reloadSkills": true,
+  "hookSpecificOutput": {
+    "sessionTitle": "Payments migration"
+  }
+}
+```
+
+Top-level `reloadSkills: true` triggers a skill re-scan in the same session (the same action as the `/reload-skills` command), making skills the hook just installed available immediately. `hookSpecificOutput.sessionTitle` sets the session's display title on startup and resume.
 
 ### SessionEnd
 
@@ -400,6 +539,94 @@ Updated matchers for notification events:
 - `idle_prompt` - Idle state notification
 - `auth_success` - Authentication success
 - `elicitation_dialog` - Dialog shown to user
+- `agent_needs_input` - Background agent needs input (v2.1.198)
+- `agent_completed` - Background agent finished (v2.1.198)
+
+### PreModelSwitch
+
+Runs **before** Claude Code applies a requested model switch — for example when you run `/model`, or when a component asks for a different model. Requires v2.1.251 or later.
+
+**Matchers:** the canonical name of the model being switched to, derived from `to_model`. Match an exact model (`claude-opus-5`) or a family with a regex (`.*opus.*`).
+
+**Input fields:** in addition to the common fields, the hook receives `from_model` (the model in use before the switch) and `to_model` (the model requested).
+
+**Can block:** yes. Exit code `2` blocks the switch and shows stderr as an error, so the session keeps its current model. Use this to gate or veto model changes — for example, to keep a cost-sensitive project off the most expensive model.
+
+**Timeout:** this event lowers the `command`, `http`, and `mcp_tool` default timeout to 30 seconds.
+
+**Configuration:**
+```json
+{
+  "hooks": {
+    "PreModelSwitch": [
+      {
+        "matcher": ".*opus.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/gate-model-switch.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+```bash
+#!/bin/bash
+# gate-model-switch.sh - refuse a switch to Opus on this project
+input=$(cat)
+to_model=$(echo "$input" | jq -r '.to_model')
+
+if [[ "$to_model" == *opus* ]]; then
+  echo "This project is budgeted for Sonnet; staying on the current model." >&2
+  exit 2
+fi
+
+exit 0
+```
+
+### PostModelSwitch
+
+Runs **after** the session's model has changed. It also fires for changes Claude Code makes itself — such as restoring the previously selected model when you resume a session — not only for switches you request. Requires v2.1.251 or later.
+
+**Matchers:** same as `PreModelSwitch` — the canonical name derived from `to_model`.
+
+**Input fields:** `from_model` and `to_model`, alongside the common fields.
+
+**Can block:** no. The switch has already happened; the hook can only observe and react.
+
+**Timeout:** this event lowers the `command`, `http`, and `mcp_tool` default timeout to 30 seconds.
+
+**Configuration:**
+```json
+{
+  "hooks": {
+    "PostModelSwitch": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/log-model-switch.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+```bash
+#!/bin/bash
+# log-model-switch.sh - append every model change to a session log
+input=$(cat)
+from=$(echo "$input" | jq -r '.from_model')
+to=$(echo "$input" | jq -r '.to_model')
+
+echo "$(date -Iseconds) $from -> $to" >> ~/.claude/model-switches.log
+exit 0
+```
 
 ## Component-Scoped Hooks
 
@@ -441,6 +668,8 @@ hooks:
   # The above Stop hook auto-converts to SubagentStop for this subagent
 ---
 ```
+
+**Workspace trust required (v2.1.218):** Frontmatter hooks in a **project** subagent now require workspace trust acceptance for the folder the agent file came from before they run. Before v2.1.218, these hooks could run from folders you hadn't trusted. See the [subagents documentation](https://code.claude.com/docs/en/sub-agents#hooks-in-subagent-frontmatter) for which scopes are exempt.
 
 ## PermissionRequest Event
 
@@ -493,6 +722,7 @@ All hooks receive JSON input via stdin:
 | `session_id` | Unique session identifier |
 | `transcript_path` | Path to the conversation transcript file |
 | `cwd` | Current working directory |
+| `prompt_id` | UUID of the prompt being processed; correlates with the OpenTelemetry `prompt.id` attribute (v2.1.196) |
 | `hook_event_name` | Name of the event that triggered the hook |
 | `agent_id` | Identifier of the agent running this hook |
 | `agent_type` | Type of agent (`"main"`, subagent type name, etc.) |
@@ -537,6 +767,28 @@ All hooks receive JSON input via stdin:
 > }
 > ```
 
+> **`retry` (PermissionDenied)**: Use JSON `hookSpecificOutput.retry: true` to tell the model it may retry the denied tool call.
+
+> **Deprecated `PreToolUse` decision form**: For `PreToolUse`, the top-level `decision` and `reason` fields are **deprecated** — use `hookSpecificOutput.permissionDecision` (`allow` / `deny` / `ask` / `defer`) and `permissionDecisionReason` instead. Precedence among decisions is `deny` > `defer` > `ask` > `allow`. Note also that `suppressOutput` is accepted but **has no effect**.
+
+#### `terminalSequence` (v2.1.141)
+
+Hooks can emit raw OSC (operating system command) escape sequences by setting `terminalSequence` in the JSON output. The host writes the sequence to its controlling terminal when the hook returns — useful for desktop notifications, window-title updates, and terminal bells without requiring a TTY of your own.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `terminalSequence` | string | Raw escape sequence (typically OSC 9 / OSC 0 / OSC 777). Written to the host terminal verbatim. |
+
+Example — fire an OSC 9 desktop notification when a long task completes:
+
+```json
+{
+  "terminalSequence": "]9;Task complete"
+}
+```
+
+Configure it on a `Stop` hook so the notification fires when Claude finishes a turn. Sequence support is terminal-dependent; Kitty/iTerm2/Windows Terminal honor OSC 9.
+
 ## Environment Variables
 
 | Variable | Availability | Description |
@@ -549,6 +801,7 @@ All hooks receive JSON input via stdin:
 | `CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS` | SessionEnd hooks | Configurable timeout in milliseconds for SessionEnd hooks (overrides default) |
 | `CLAUDE_CODE_SESSION_ID` | Bash tool subprocesses (v2.1.132+) | Session UUID; matches the `session_id` field in hook input JSON. Use to correlate bash logs with hook telemetry. |
 | `CLAUDE_EFFORT` | Bash tool subprocesses (v2.1.133+) | Active effort level (`low`/`medium`/`high`/`xhigh`/`max`); matches `effort.level` in hook input JSON. |
+| `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` | Process-wide (v2.1.143+) | Max consecutive Stop-hook blocks before the session ends with a warning (default `8`). Set to `0` to disable the cap. |
 
 ## Prompt-Based Hooks
 
@@ -1200,9 +1453,11 @@ MCP tools follow the pattern `mcp__<server>__<tool>`:
 ### Security Notes
 
 - **Workspace trust required:** The `statusLine` and `fileSuggestion` hook output commands now require workspace trust acceptance before they take effect.
+- **Status-line terminal size (v2.1.153):** Status-line command scripts now receive `COLUMNS` and `LINES` environment variables, so a script can adapt its output to the terminal width/height (e.g. `[ "$COLUMNS" -lt 80 ] && short_output`).
 - **HTTP hooks and environment variables:** HTTP hooks require an explicit `allowedEnvVars` list to use environment variable interpolation in URLs. This prevents accidental leakage of sensitive environment variables to remote endpoints.
 - **Managed settings hierarchy:** The `disableAllHooks` setting now respects the managed settings hierarchy, meaning organization-level settings can enforce hook disablement that individual users cannot override.
 - **PowerShell auto-approve (v2.1.119):** PowerShell tool commands can be auto-approved in permission mode, matching Bash. This brings parity for Windows users running Claude Code with PowerShell-backed shell tools.
+- **Bash bare env-var auto-approve closed (v2.1.145):** Before v2.1.145, a Bash command of the form `FOO=bar somecommand` (a bare variable assignment inline with a non-allowlisted command) could be auto-approved when only `FOO=bar` by itself was on the allowlist. v2.1.145 closes this — such commands now hit the permission prompt. Scripts relying on the implicit allow will start prompting; re-allow them explicitly via a `Bash(...)` permission rule that covers the full command, not just the variable assignment.
 
 ### Best Practices
 
@@ -1314,7 +1569,7 @@ echo $?
 
 | Aspect | Behavior |
 |--------|----------|
-| **Timeout** | 60 seconds default, configurable per command |
+| **Timeout** | 600 seconds default for command/http/mcp_tool (30 for prompt, 60 for agent); configurable per hook |
 | **Parallelization** | All matching hooks run in parallel |
 | **Deduplication** | Identical hook commands deduplicated |
 | **Environment** | Runs in current directory with Claude Code's environment |
@@ -1371,12 +1626,10 @@ Edit `~/.claude/settings.json` or `.claude/settings.json` with the hook configur
 
 ---
 
-**Last Updated**: May 9, 2026
-**Claude Code Version**: 2.1.138
+**Last Updated**: September 2, 2026
+**Claude Code Version**: 2.1.257
 **Sources**:
 - https://code.claude.com/docs/en/hooks
-- https://code.claude.com/docs/en/changelog
-- https://github.com/anthropics/claude-code/releases/tag/v2.1.118
-- https://github.com/anthropics/claude-code/releases/tag/v2.1.131
-- https://github.com/anthropics/claude-code/releases/tag/v2.1.138
-**Compatible Models**: Claude Sonnet 4.6, Claude Opus 4.7, Claude Haiku 4.5
+- https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md
+- https://code.claude.com/docs/en/sub-agents
+**Compatible Models**: Claude Fable 5, Claude Opus 5, Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5

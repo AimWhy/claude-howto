@@ -1,6 +1,6 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../resources/logos/claude-howto-logo-dark.svg">
-  <img alt="Claude How To" src="../../resources/logos/claude-howto-logo.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="../../../resources/logos/claude-howto-logo-dark.svg">
+  <img alt="Claude How To" src="../../../resources/logos/claude-howto-logo.svg">
 </picture>
 
 # Плагін DevOps Automation
@@ -75,7 +75,7 @@
 
 ## Вимоги
 
-- Claude Code 1.0+
+- Claude Code 2.1+
 - Kubernetes CLI (kubectl)
 - Налаштований доступ до кластера
 

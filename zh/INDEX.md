@@ -1,6 +1,6 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="resources/logos/claude-howto-logo-dark.svg">
-  <img alt="Claude How To" src="resources/logos/claude-howto-logo.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="../resources/logos/claude-howto-logo-dark.svg">
+  <img alt="Claude How To" src="../resources/logos/claude-howto-logo.svg">
 </picture>
 
 # Claude Code 示例 - 完整索引
@@ -214,11 +214,13 @@ blog-draft/
 
 **使用方式**：在设置中配置后自动执行
 
-**Hook 类型**（4 类，25 个事件）：
-- 工具 Hook：`PreToolUse`、`PostToolUse`、`PostToolUseFailure`、`PermissionRequest`
-- 会话 Hook：`SessionStart`、`SessionEnd`、`Stop`、`StopFailure`、`SubagentStart`、`SubagentStop`
-- 任务 Hook：`UserPromptSubmit`、`TaskCompleted`、`TaskCreated`、`TeammateIdle`
-- 生命周期 Hook：`ConfigChange`、`CwdChanged`、`FileChanged`、`PreCompact`、`PostCompact`、`WorktreeCreate`、`WorktreeRemove`、`Notification`、`InstructionsLoaded`、`Elicitation`、`ElicitationResult`
+**Hook 类型**（5 种）：`command`、`http`、`prompt`、`mcp_tool`、`agent` — 决定 hook 如何运行。
+
+**Hook 事件**（33 个，分 4 类）— 决定 hook 何时运行：
+- 工具 Hook：`PreToolUse`、`PostToolUse`、`PostToolUseFailure`、`PostToolBatch`、`PermissionRequest`、`PermissionDenied`
+- 会话 Hook：`SessionStart`、`Setup`、`SessionEnd`、`Stop`、`StopFailure`、`SubagentStart`、`SubagentStop`
+- 任务 Hook：`UserPromptSubmit`、`UserPromptExpansion`、`MessageDisplay`、`TaskCompleted`、`TaskCreated`、`TeammateIdle`（TaskCompleted/TaskCreated 仅在启用 todo 工具时触发 —— 在 Opus 4.8、Sonnet 5、Fable 5、Mythos 5 及更新模型上默认关闭；`CLAUDE_CODE_ENABLE_TODO_TOOLS=1` 可恢复）
+- 生命周期 Hook：`ConfigChange`、`CwdChanged`、`DirectoryAdded`、`FileChanged`、`PreCompact`、`PostCompact`、`PreModelSwitch`、`PostModelSwitch`、`WorktreeCreate`、`WorktreeRemove`、`Notification`、`InstructionsLoaded`、`Elicitation`、`ElicitationResult`
 
 ---
 
@@ -391,8 +393,8 @@ documentation/
 - **default**：风险操作需要审批
 - **acceptEdits**：自动接受文件编辑，其他操作仍需审批
 - **plan**：只读分析，不做修改
-- **auto**：自动批准安全操作，风险操作仍提示
-- **dontAsk**：除危险操作外全部接受
+- **auto**：所有操作都执行，附带后台安全检查 — 由分类器审查命令和受保护目录的写入（通过 `autoMode` 设置对象配置）
+- **dontAsk**：只允许预先批准的工具 — 任何本来会弹出提示的调用都会被自动拒绝。Claude 只运行 `permissions.allow` 匹配项、只读 Bash 命令，以及被 `PreToolUse` hook 批准的调用
 - **bypassPermissions**：全部接受（需要 `--dangerously-skip-permissions`）
 
 #### Headless Mode（`claude -p`）
@@ -663,7 +665,7 @@ cp 01-slash-commands/optimize.md .claude/commands/
 cp 04-subagents/code-reviewer.md .claude/agents/
 
 # 安装 skill
-cp -r 03-skills/code-review ~/.claude/skills/
+cp -r 03-skills/code-review-specialist ~/.claude/skills/
 
 # 或直接安装完整插件
 /plugin install pr-review
@@ -817,13 +819,13 @@ claude -p "Run tests and report results"
 
 - `01-slash-commands/optimize.md` - 性能分析
 - `04-subagents/code-reviewer.md` - 性能审查
-- `03-skills/code-review/` - 性能指标
+- `03-skills/code-review-specialist/` - 性能指标
 - `07-plugins/pr-review/agents/performance-analyzer.md` - 性能专家
 
 ### 安全
 
 - `04-subagents/secure-reviewer.md` - 安全审查
-- `03-skills/code-review/` - 安全分析
+- `03-skills/code-review-specialist/` - 安全分析
 - `07-plugins/pr-review/` - 安全检查
 
 ### 测试
@@ -892,9 +894,12 @@ claude -p "Run tests and report results"
 
 ---
 
-**最后更新**：2026 年 3 月
+**最后更新**：2026 年 8 月 15 日
+**Claude Code 版本**：2.1.233
 **总示例数**：100+ 文件
 **分类数**：10 个功能
 **Hooks**：8 个自动化脚本
 **配置示例**：10+ 个场景
 **可直接使用**：所有示例
+**来源**：
+- https://code.claude.com/docs/en/hooks

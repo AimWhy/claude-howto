@@ -1,6 +1,6 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../resources/logos/claude-howto-logo-dark.svg">
-  <img alt="Claude How To" src="../resources/logos/claude-howto-logo.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="../../resources/logos/claude-howto-logo-dark.svg">
+  <img alt="Claude How To" src="../../resources/logos/claude-howto-logo.svg">
 </picture>
 
 # Subagents 完整参考
@@ -65,9 +65,9 @@ Claude Code 自带一些常见角色，例如：
 - 通用助手
 - Planning agent
 - Explore agent
-- Bash agent
+- claude 兜底 agent
 - Statusline 相关 agent
-- Claude Code Guide agent
+- claude-code-guide agent
 
 ## 管理 Subagents
 

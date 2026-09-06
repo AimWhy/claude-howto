@@ -3,8 +3,8 @@
 <!-- i18n-date: 2026-04-09 -->
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="resources/logos/claude-howto-logo-dark.svg">
-  <img alt="Claude How To" src="resources/logos/claude-howto-logo.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="../resources/logos/claude-howto-logo-dark.svg">
+  <img alt="Claude How To" src="../resources/logos/claude-howto-logo.svg">
 </picture>
 
 # Внесок у Claude How To
@@ -72,7 +72,7 @@ git checkout -b docs/improvement-area
 
 ### 3. Налаштування середовища
 
-Pre-commit хуки запускають ті ж перевірки, що й CI, локально перед кожним комітом. Усі чотири перевірки повинні пройти перед прийняттям PR.
+Pre-commit хуки запускають ті ж перевірки, що й CI, локально перед кожним комітом. Усі п'ять перевірок повинні пройти перед прийняттям PR.
 
 **Необхідні залежності:**
 

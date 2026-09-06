@@ -45,15 +45,18 @@ Use the `/rewind` command (alias: `/checkpoint`) for quick access:
 
 ## Rewind Options
 
-When you rewind, you are presented with a menu of five options:
+When you rewind, you are presented with a menu of six options:
 
 1. **Restore code and conversation** -- Revert both files and messages to that checkpoint
 2. **Restore conversation** -- Rewind messages only, keep your current code as-is
 3. **Restore code** -- Revert file changes only, keep the full conversation history
 4. **Summarize from here** -- Compress the conversation from this point forward into an AI-generated summary, freeing context window space. Messages before the selected point stay intact. No files on disk are changed. The original messages are preserved in the session transcript. You can optionally provide instructions to focus the summary on specific topics.
-5. **Never mind** -- Cancel and return to the current state
+5. **Summarize up to here** -- The backward counterpart: compress everything *before* the selected point into an AI-generated summary, keeping the messages from this point forward intact. Together with "Summarize from here" this gives you bidirectional, targeted compaction of your context window. No files on disk are changed, and the original messages are preserved in the session transcript.
+6. **Never mind** -- Cancel and return to the current state
 
 > **Note**: After restoring the conversation or summarizing, the original prompt from the selected message is restored into the input field so you can re-send or edit it.
+
+> **`/clear` is no longer a hard boundary (v2.1.191+)**: `/rewind` can resume from a checkpoint taken *before* you ran `/clear`. Clearing the conversation no longer permanently discards the state that preceded it — you can rewind back across the clear if you need that earlier code or context again.
 
 ## Automatic Checkpoints
 
@@ -211,15 +214,21 @@ Since checkpoints are created automatically, you can focus on your work without 
 
 Checkpoints are a built-in default behavior in Claude Code and do not require any configuration to enable. Every user prompt automatically creates a checkpoint.
 
-The only checkpoint-related setting is `cleanupPeriodDays`, which controls how long sessions and checkpoints are retained:
+Two settings govern checkpoint behavior — whether snapshots are taken at all, and how long they are kept:
 
 ```json
 {
+  "fileCheckpointingEnabled": true,
   "cleanupPeriodDays": 30
 }
 ```
 
-- `cleanupPeriodDays`: Number of days to retain session history and checkpoints (default: `30`)
+| Setting | Default | Effect |
+|---------|---------|--------|
+| `fileCheckpointingEnabled` | `true` | Snapshot files before each edit so `/rewind` can restore them. Requires v2.1.119+. Surfaces in `/config` as **Rewind code (checkpoints)**. Env equivalent: `CLAUDE_CODE_DISABLE_FILE_CHECKPOINTING` |
+| `cleanupPeriodDays` | `30` | Number of days to retain session history and checkpoints |
+
+Claude Code keeps snapshots for the **100 most recent checkpoints**; older ones are dropped even inside the retention window.
 
 > **v2.1.117 update**: `cleanupPeriodDays` now governs retention for four on-disk caches, not just checkpoints:
 >
@@ -237,6 +246,8 @@ Checkpoints have the following limitations:
 - **Bash command changes NOT tracked** - Operations like `rm`, `mv`, `cp` on the filesystem are not captured in checkpoints
 - **External changes NOT tracked** - Changes made outside Claude Code (in your editor, terminal, etc.) are not captured
 - **Not a replacement for version control** - Use git for permanent, auditable changes to your codebase
+
+> **v2.1.216 update**: `/rewind` no longer restores or deletes files through symlinks or hard links at tracked paths. If a tracked path resolves through a symlink or hard link, rewind skips it rather than following the link, and it reports how many paths it skipped for this reason.
 
 ## Troubleshooting
 
@@ -283,7 +294,7 @@ Use both together:
 1. **Work normally** - Claude Code creates checkpoints automatically
 2. **Want to go back?** - Press `Esc` twice or use `/rewind`
 3. **Choose checkpoint** - Select from the list to rewind
-4. **Select what to restore** - Choose from restore code and conversation, restore conversation, restore code, summarize from here, or cancel
+4. **Select what to restore** - Choose from restore code and conversation, restore conversation, restore code, summarize from here, summarize up to here, or cancel
 5. **Continue working** - You're back at that point
 
 ### Keyboard Shortcuts
@@ -325,10 +336,11 @@ Remember: checkpoints are not a replacement for git. Use checkpoints for rapid e
 
 ---
 
-**Last Updated**: May 9, 2026
-**Claude Code Version**: 2.1.138
+**Last Updated**: August 25, 2026
+**Claude Code Version**: 2.1.245
 **Sources**:
 - https://code.claude.com/docs/en/checkpointing
 - https://code.claude.com/docs/en/settings
 - https://github.com/anthropics/claude-code/releases/tag/v2.1.117
-**Compatible Models**: Claude Sonnet 4.6, Claude Opus 4.7, Claude Haiku 4.5
+- https://code.claude.com/docs/en/model-config
+**Compatible Models**: Claude Fable 5, Claude Opus 5, Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5

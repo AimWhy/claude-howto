@@ -162,7 +162,7 @@ cp 01-slash-commands/optimize.md /path/to/your-project/.claude/commands/
 cp 02-memory/project-CLAUDE.md /path/to/your-project/CLAUDE.md
 
 # 5. スキルをインストール:
-cp -r 03-skills/code-review ~/.claude/skills/
+cp -r 03-skills/code-review-specialist ~/.claude/skills/
 ```
 
 フルセットアップが必要なら、**1 時間で必要な設定** はこちら。
@@ -175,7 +175,7 @@ cp 01-slash-commands/*.md .claude/commands/
 cp 02-memory/project-CLAUDE.md ./CLAUDE.md
 
 # スキルをインストール (15 分)
-cp -r 03-skills/code-review ~/.claude/skills/
+cp -r 03-skills/code-review-specialist ~/.claude/skills/
 
 # 週末ゴール: フック、サブエージェント、MCP、プラグインを追加
 # ガイド付きセットアップは学習パスに従う
@@ -284,7 +284,7 @@ cp 01-slash-commands/*.md .claude/commands/
 cp 02-memory/project-CLAUDE.md ./CLAUDE.md
 
 # Skills
-cp -r 03-skills/code-review ~/.claude/skills/
+cp -r 03-skills/code-review-specialist ~/.claude/skills/
 
 # Subagents
 cp 04-subagents/*.md .claude/agents/
@@ -384,10 +384,10 @@ cp 02-memory/personal-CLAUDE.md ~/.claude/CLAUDE.md
 **インストール**：
 ```bash
 # 個人スキル
-cp -r 03-skills/code-review ~/.claude/skills/
+cp -r 03-skills/code-review-specialist ~/.claude/skills/
 
 # プロジェクトスキル
-cp -r 03-skills/code-review /path/to/project/.claude/skills/
+cp -r 03-skills/code-review-specialist /path/to/project/.claude/skills/
 ```
 
 **使い方**：関連する場面で自動的に起動される
@@ -486,11 +486,13 @@ chmod +x ~/.claude/hooks/*.sh
 
 **使い方**：イベント発生時にフックが自動実行される
 
-**フックの種類**（5 系統、28 イベント）：
-- **ツール系フック**：`PreToolUse`、`PostToolUse`、`PostToolUseFailure`、`PermissionRequest`
-- **セッション系フック**：`SessionStart`、`SessionEnd`、`Stop`、`StopFailure`、`SubagentStart`、`SubagentStop`
-- **タスク系フック**：`UserPromptSubmit`、`TaskCompleted`、`TaskCreated`、`TeammateIdle`
-- **ライフサイクル系フック**：`ConfigChange`、`CwdChanged`、`FileChanged`、`PreCompact`、`PostCompact`、`WorktreeCreate`、`WorktreeRemove`、`Notification`、`InstructionsLoaded`、`Elicitation`、`ElicitationResult`
+**フックの種類**（5 種）：`command`、`http`、`prompt`、`mcp_tool`、`agent` — フックの実行方式。
+
+**フックイベント**（33 件、4 カテゴリ）— 実行タイミング：
+- **ツール系フック**：`PreToolUse`、`PostToolUse`、`PostToolUseFailure`、`PostToolBatch`、`PermissionRequest`、`PermissionDenied`
+- **セッション系フック**：`SessionStart`、`Setup`、`SessionEnd`、`Stop`、`StopFailure`、`SubagentStart`、`SubagentStop`
+- **タスク系フック**：`UserPromptSubmit`、`UserPromptExpansion`、`MessageDisplay`、`TaskCompleted`、`TaskCreated`、`TeammateIdle`（`TaskCompleted` と `TaskCreated` は todo ツールが有効なときのみ発火 — Opus 4.8、Sonnet 5、Fable 5、Mythos 5 以降ではデフォルト無効。`CLAUDE_CODE_ENABLE_TODO_TOOLS=1` で復活）
+- **ライフサイクル系フック**：`ConfigChange`、`CwdChanged`、`DirectoryAdded`、`FileChanged`、`PreCompact`、`PostCompact`、`PreModelSwitch`、`PostModelSwitch`、`WorktreeCreate`、`WorktreeRemove`、`Notification`、`InstructionsLoaded`、`Elicitation`、`ElicitationResult`
 
 </details>
 
@@ -875,9 +877,10 @@ MIT License — [LICENSE](../LICENSE) を参照。利用、変更、再配布は
 
 ---
 
-**最終更新**：2026 年 4 月 24 日
-**Claude Code バージョン**：2.1.119
+**最終更新**：2026 年 8 月 25 日
+**Claude Code バージョン**：2.1.245
 **情報源**：
+- https://code.claude.com/docs/en/hooks
 - https://code.claude.com/docs/en/overview
 - https://code.claude.com/docs/en/changelog
 - https://github.com/anthropics/claude-code/releases/tag/v2.1.119

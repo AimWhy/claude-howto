@@ -58,6 +58,8 @@ sequenceDiagram
     Tools-->>Claude: Plugin installed ✅
 ```
 
+> **No marketplace required (v2.1.157+)**: Plugins placed in `.claude/skills` directories now auto-load without a marketplace. Scaffold a new one with `claude plugin init <name>`, which creates it at `~/.claude/skills/<name>/` (user-global) and auto-loads it in the next session as `<name>@skills-dir`.
+
 ## Plugin Types & Distribution
 
 | Type | Scope | Shared | Authority | Examples |
@@ -84,6 +86,20 @@ Plugin manifest uses JSON format in `.claude-plugin/plugin.json`:
   "license": "MIT"
 }
 ```
+
+Beyond those identity fields, the manifest can point Claude Code at components that live somewhere other than the default folders, and carry discovery and dependency metadata:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `workflows` | string \| array | Custom [workflow](https://code.claude.com/docs/en/workflows) script files or directories (replaces the default `workflows/`) |
+| `outputStyles` | string \| array | Custom output style files or directories (replaces the default `output-styles/`) |
+| `lspServers` | string \| array \| object | LSP servers for code intelligence — go to definition, find references, diagnostics. Commonly `"./.lsp.json"`. See [LSP server configuration](#lsp-server-configuration) |
+| `channels` | array | Channel declarations for message injection (Telegram, Slack, Discord style) |
+| `dependencies` | array | Other plugins this plugin requires, optionally with semver version constraints |
+| `keywords` | array | Discovery tags used when browsing and searching marketplaces |
+| `metadata` | object | Free-form object for your own data, such as entitlement or catalog fields |
+| `experimental.themes` | string \| array | Color theme files or directories (replaces the default `themes/`) |
+| `experimental.monitors` | string \| array | [Background Monitor](#background-monitors-v21105) configurations that start automatically when the plugin is active |
 
 ## Plugin Structure Example
 
@@ -121,13 +137,15 @@ my-plugin/
     └── plugin.test.js
 ```
 
+> **Note**: `commands/` is **legacy**. Official guidance is *"Use `skills/` for new plugins."* Existing `commands/` directories keep working — the three example plugins in this module ship one — but a new plugin should put its capabilities in `skills/` as `SKILL.md` directories instead of flat Markdown command files.
+
 ### LSP server configuration
 
 Plugins can include Language Server Protocol (LSP) support for real-time code intelligence. LSP servers provide diagnostics, code navigation, and symbol information as you work.
 
 **Configuration locations**:
 - `.lsp.json` file in the plugin root directory
-- Inline `lsp` key in `plugin.json`
+- The `lspServers` key in `plugin.json` — the official manifest field name. It accepts a string, an array, or an object: a string or array points at LSP config file(s) or directories (for example `"./.lsp.json"`), and an object declares the servers inline.
 
 #### Field reference
 
@@ -212,6 +230,23 @@ Once configured, LSP servers provide:
 - **Code navigation** — go to definition, find references, implementations
 - **Hover information** — type signatures and documentation on hover
 - **Symbol listing** — browse symbols in the current file or workspace
+
+### `bin/` directory on `PATH`
+
+When a plugin is enabled, its `bin/` directory is prepended to the session's `PATH`. Any executable shipped there can be invoked directly from the Bash tool by name — no qualified path required.
+
+```bash
+# In a plugin layout:
+my-plugin/
+├── plugin.json
+└── bin/
+    └── my-tool          # executable file (chmod +x)
+
+# Inside a Claude Code session with the plugin enabled:
+$ my-tool --help
+```
+
+Use this for CLI helpers that hooks, skills, or commands inside the same plugin will shell out to. Mark the files executable in the plugin repo (`chmod +x`) — git preserves the bit.
 
 ## Plugin Options (v2.1.83+)
 
@@ -321,6 +356,8 @@ Use **standalone slash commands** for quick personal workflows. Use **plugins** 
 
 > **`skills/` discovery (v2.1.136+)**: A `skills` entry in `plugin.json` no longer hides the plugin's default `skills/` directory. Skills declared in both places are merged, so you can list a few highlights in `plugin.json` without losing the rest.
 
+> **Root-level `SKILL.md` plugins (v2.1.142+)**: A plugin with a top-level `SKILL.md` and **no `skills/` subdirectory** is itself surfaced as a single skill — the plugin *is* the skill. This is an additional pattern, not a replacement for the `skills/` directory or the `plugin.json` `skills` entry; use it for small single-skill plugins where the directory layout adds no value.
+
 ## Practical Examples
 
 ### Example 1: PR Review Plugin
@@ -365,7 +402,7 @@ This command initiates a complete pull request review including:
 ---
 name: security-reviewer
 description: Security-focused code review
-tools: read, grep, diff
+tools: Read, Grep, Bash
 ---
 
 # Security Reviewer
@@ -445,7 +482,16 @@ documentation/
 
 ## Plugin Marketplace
 
-The official Anthropic-managed plugin directory is `anthropics/claude-plugins-official`. Enterprise admins can also create private plugin marketplaces for internal distribution.
+The official Anthropic-managed plugin directory is `anthropics/claude-plugins-official`, auto-registered on first interactive launch. Enterprise admins can also create private plugin marketplaces for internal distribution.
+
+There is also a **community marketplace**, `anthropics/claude-plugins-community`, hosting third-party plugins that have passed Anthropic's automated validation and safety screening — each pinned to a specific commit SHA in the catalog. Unlike the official marketplace you add it manually:
+
+```bash
+/plugin marketplace add anthropics/claude-plugins-community
+
+# Then install from it using the claude-community marketplace name
+/plugin install <plugin-name>@claude-community
+```
 
 ```mermaid
 graph TB
@@ -487,6 +533,17 @@ Enterprise and advanced users can control marketplace behavior through settings:
 | `blockedMarketplaces` | Admin-managed blocklist of marketplaces (supports `hostPattern` / `pathPattern` regex fields since v2.1.119) |
 | `deniedPlugins` | Admin-managed blocklist to prevent specific plugins from being installed |
 
+> **Friendlier aliases (v2.1.232)**: `additionalMarketplaces` is accepted as an alias for
+> `extraKnownMarketplaces`, and `allowedMarketplaces` for `strictKnownMarketplaces`.
+> **Changelog-sourced** — the v2.1.232 changelog announces them, but the official settings
+> reference does not yet list either name. The canonical keys are safe to keep using.
+
+> **Owner wildcards (v2.1.223+)**: a `"owner/*"` entry allows or blocks every marketplace
+> repo under one GitHub owner. **Accepted only in `strictKnownMarketplaces` and
+> `blockedMarketplaces`.** Everywhere else a `github` source appears — including
+> `extraKnownMarketplaces` and `/plugin marketplace add` — the `repo` value must name a
+> single repository.
+
 > **Enforcement** (v2.1.117+): `blockedMarketplaces` and `strictKnownMarketplaces` are enforced on every plugin lifecycle event — install, update, refresh, and autoupdate — not just at first add. `strictKnownMarketplaces` is managed-only.
 
 Example `blockedMarketplaces` with host/path regex (v2.1.119):
@@ -502,11 +559,28 @@ Example `blockedMarketplaces` with host/path regex (v2.1.119):
 }
 ```
 
+#### Marketplace `headersHelper` (v2.1.238)
+
+A `url` marketplace — or an individual catalog entry — can name a `headersHelper` command that mints the HTTP headers used to fetch the catalog and any same-origin archives. This is how a private marketplace behind a token-issuing service authenticates without a static secret in the config.
+
+A **catalog entry's** helper runs only on install or update, and only after its command has been shown to you: `claude plugin install` and `claude plugin update` prompt `[y/N]` before running it. Pass `-y` to accept without the prompt in automation.
+
 ### Additional Marketplace Features
 
+- **Marketplace search bar (v2.1.172)**: When browsing a marketplace's plugins in `/plugin`, a search bar lets you filter the marketplace's plugins by name or keyword — handy for large marketplaces where scrolling the full list is slow.
 - **Default git timeout**: Increased from 30s to 120s for large plugin repositories
 - **Custom npm registries**: Plugins can specify custom npm registry URLs for dependency resolution
 - **Version pinning**: Lock plugins to specific versions for reproducible environments
+- **Projected context cost in the browse pane (v2.1.143)**: The `/plugin` marketplace browser shows each plugin's projected per-turn context-token cost — the sum of always-loaded skills, hooks, and MCP server descriptors. Use it to size plugin adoption before installing. The same projection is available post-install via [`claude plugin details <name>`](#claude-plugin-details-name-v21139).
+
+Example browse row with the cost column:
+
+```text
+NAME              VERSION   AUTHOR     CTX/TURN   DESCRIPTION
+code-reviewer     1.2.0     anthropic  +1,420     Multi-agent PR review
+devops-toolkit    0.4.1     acme       +3,180     SRE playbooks, on-call helpers
+docs-helper       0.9.0     community  +610       Doc-style guide enforcement
+```
 
 ### Marketplace definition schema
 
@@ -547,6 +621,9 @@ Plugin marketplaces are defined in `.claude-plugin/marketplace.json`:
 | `plugins[].description` | No | Brief plugin description |
 | `plugins[].version` | No | Semantic version string |
 | `plugins[].author` | No | Plugin author name |
+| `plugins[].renames` | No | Maps a former plugin `name` to its current name (or `null` if removed) so users migrate automatically (v2.1.193) |
+| `plugins[].displayName` | No | Human-readable name shown in the UI; not used for lookup (v2.1.143) |
+| `plugins[].defaultEnabled` | No | If `false`, the plugin installs disabled until the user opts in (v2.1.154) |
 
 ### Plugin source types
 
@@ -560,8 +637,61 @@ Plugins can be sourced from multiple locations:
 | **Git subdirectory** | `{ "source": "git-subdir", "url": "...", "path": "..." }` | `{ "source": "git-subdir", "url": "https://github.com/org/monorepo.git", "path": "packages/plugin" }` |
 | **npm** | `{ "source": "npm", "package": "..." }` | `{ "source": "npm", "package": "@acme/claude-plugin", "version": "^2.0" }` |
 | **pip** | `{ "source": "pip", "package": "..." }` | `{ "source": "pip", "package": "claude-data-plugin", "version": ">=1.0" }` |
+| **Archive** (v2.1.224+) | `{ "source": "archive", "url": "..." }` | `{ "source": "archive", "url": "https://cdn.example.com/lint-plugin-1.2.0.zip", "sha256": "…" }` |
+| **Command** (v2.1.229+) | `{ "source": "command", "command": "..." }` | `{ "source": "command", "command": "acme-plugin-resolver --print-dir" }` |
 
 GitHub and git sources support optional `ref` (branch/tag) and `sha` (commit hash) fields for version pinning.
+
+**Bare source names and `metadata.pluginRoot` (v2.1.239)**: a marketplace's `metadata.pluginRoot` now takes effect — a bare plugin source name in the catalog resolves to a directory under that root, instead of having to be spelled as a full relative path on every entry.
+
+**Skills synced from claude.ai (v2.1.239)**: plugins synced down from claude.ai appear as `name@synced`. Address them that way in `claude plugin enable <name>@synced` and `claude plugin disable <name>@synced`. A synced plugin never overrides an installed plugin of the same name — the two coexist, distinguished by the `@synced` suffix.
+
+#### `archive` source (v2.1.224+)
+
+Install a plugin from a zip over HTTPS — no git clone, no npm install.
+
+```json
+{
+  "source": "archive",
+  "url": "https://cdn.example.com/lint-plugin-1.2.0.zip",
+  "sha256": "3b1f0c2e9a7d4f5b8c6e1a2d3f4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b"
+}
+```
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| `url` | Yes | **HTTPS only.** `http://`, loopback, link-local, and cloud-metadata hosts are rejected — and re-checked on **every redirect hop**, so a redirect cannot smuggle you onto a blocked host |
+| `sha256` | No | 64 hex characters. On mismatch the install fails with `Plugin archive integrity check failed` |
+
+Archives are capped at **256 MiB**. Pin `sha256` for anything you did not build yourself — without it, whoever controls the URL controls the code that runs in your session.
+
+#### `command` source (v2.1.229+)
+
+Let a locally installed tool decide where the plugin lives. Useful when an internal
+package manager already knows how to fetch and lay out your plugins.
+
+```json
+{
+  "source": "command",
+  "command": "acme-plugin-resolver --print-dir",
+  "timeout": 60,
+  "mode": "copy"
+}
+```
+
+The contract is strict: **the command must print exactly one line on stdout and exit with
+code 0.** That line is the absolute path of a directory containing the complete plugin.
+
+| Field | Required | Default | Notes |
+|-------|----------|---------|-------|
+| `command` | Yes | — | The command to run |
+| `timeout` | No | `60` (seconds) | Maximum 600 |
+| `mode` | No | `"copy"` | `"copy"` snapshots the directory; `"link"` symlinks it, so edits are live |
+
+The command is re-resolved each session and the result is applied without a restart.
+Organizations can block this source type entirely with `disableCommandPluginSources`.
+
+Reserved marketplace names now include `first-party-plugins` and `healthcare` (v2.1.205) — these are held for official use and cannot be claimed by a custom marketplace.
 
 ### Distribution methods
 
@@ -575,6 +705,13 @@ GitHub and git sources support optional `ref` (branch/tag) and `sha` (commit has
 ```bash
 /plugin marketplace add https://gitlab.com/org/marketplace-repo.git
 ```
+
+Bare `gitlab.com` repo URLs — including nested subgroups — clone the same way `github.com`
+URLs do (v2.1.232). **The scheme is mandatory**: since v2.1.196 a bare
+`gitlab.example.com/team/plugins` is rejected as an invalid `owner/repo` shorthand, so use
+the full `https://gitlab.com/company/plugins.git` form. v2.1.232 also added GitLab
+token-family secret redaction and gave the `glab` CLI the same sandbox and credential-path
+protection `gh` already had.
 
 **Private repositories**: Supported via git credential helpers or environment tokens. Users must have read access to the repository.
 
@@ -662,15 +799,50 @@ claude plugin update <name>                  # Update installed plugin to latest
 claude plugin list                           # List installed plugins
 claude plugin enable <name>                  # Enable a disabled plugin
 claude plugin disable <name>                 # Disable a plugin
-claude plugin validate                       # Validate plugin structure
-claude plugin tag <version>                  # Create a release git tag with version validation (v2.1.118+)
+claude plugin validate <path>                # Validate the plugin structure at <path>
+claude plugin tag [path]                     # Create a {name}--v{version} release git tag (v2.1.118+)
 claude plugin prune                          # Remove orphaned auto-installed plugin dependencies (v2.1.121+)
 claude plugin uninstall <name> --prune       # Uninstall and cascade-clean orphaned dependencies (v2.1.121+)
+claude plugin details <name>                 # Show inventory + projected per-turn token cost (v2.1.139+)
+claude plugin init <name>                    # Scaffold a new plugin (alias: claude plugin new)
 ```
 
-Example: `claude plugin tag v0.3.0` validates the version format, creates the matching git tag, and is the recommended way to cut plugin releases for distribution.
+**Aliases**: `claude plugin new` for `init`, `remove` / `rm` for `uninstall`, `ls` for `list`, and `autoremove` for `prune`.
+
+**Flags worth knowing:**
+
+| Command | Flag | Purpose |
+|---------|------|---------|
+| `plugin init` | `--with <components...>` | Scaffold specific component folders: `skills`, `agents`, `hooks`, `mcp`, `lsp`, `output-style`, `channel` |
+| `plugin init` | `-f`, `--force` | Overwrite an existing `.claude-plugin/` directory |
+| `plugin install` | `--config <key=value>` | Set a `userConfig` option at install time |
+| `plugin install` | `-y`, `--yes` | Accept commands without a confirmation prompt |
+| `plugin list` | `--available` | Also list plugins available from marketplaces (requires `--json`) |
+| `plugin tag` | `--push` | Push the tag to the remote after creating it |
+| `plugin tag` | `--dry-run` | Print what would be tagged without creating the tag |
+| `plugin validate` | `--strict` | Treat warnings as errors |
+| `plugin validate` | `--json` | Emit a machine-readable validation report (v2.1.259+) |
+
+Example: `claude plugin tag ./my-plugin` takes a **path** to the plugin (not a version string). It creates a `{name}--v{version}` git tag derived from `plugin.json`, validating that `plugin.json` and any enclosing marketplace entry agree, and is the recommended way to cut plugin releases for distribution.
 
 `claude plugin prune` is useful after installing or uninstalling marketplace plugins that pulled in their own dependencies — it removes any auto-installed plugins whose parent plugin has since been removed. `plugin uninstall --prune` does the same cascade in a single step.
+
+> **Dependency enforcement (v2.1.143)**: `claude plugin disable <name>` **refuses** if another enabled plugin still depends on the target (the dependency graph would break). `claude plugin enable <name>` **force-enables transitive dependencies** after a single confirmation prompt rather than requiring a separate enable for each. Use `claude plugin prune` to clean up dependencies whose dependents were later removed.
+
+### `claude plugin details <name>` (v2.1.139+)
+
+`claude plugin details <name>` prints the plugin's full component inventory — skills, hooks, MCP servers, LSP servers, background monitors, slash commands — plus a **projected per-turn (and per-invocation) token cost**. Use it to size a plugin before adopting it, especially on context-constrained models.
+
+Example output (abbreviated):
+
+```text
+plugin: code-reviewer (1.2.0)
+skills:        3      hooks: 2      mcp: 1      lsp: 0      monitors: 0
+commands:      /review, /security-review
+projected ctx: +1,420 tokens per turn  ·  +9,800 tokens per /review invocation
+```
+
+LSP servers were added to the details pane in v2.1.142. See also the marketplace browse pane's projected context cost (v2.1.143) covered in [Plugin Marketplace](#plugin-marketplace).
 
 ## Installation Methods
 
@@ -681,10 +853,31 @@ Example: `claude plugin tag v0.3.0` validates the version format, creates the ma
 claude plugin install plugin-name@marketplace-name
 ```
 
+**Does it take effect right away?** Since **v2.1.221**, usually yes — read the last line of
+the install summary:
+
+| Install summary says | What it means |
+|---|---|
+| `Plugin is now active.` | Claude Code activated the plugin as part of the install. Nothing more to do. |
+| `Run /reload-plugins to activate.` | The plugin is installed but not live yet — either activating it would have invalidated the prompt cache, or the activation attempt failed. |
+
+Before v2.1.221, no install took effect in the current session until you ran
+`/reload-plugins` or restarted, so older guides describe that step as unconditional.
+
 ### Enable / Disable (with auto-detected scope)
 ```bash
 /plugin enable plugin-name
 /plugin disable plugin-name
+```
+
+The `/plugin` interface surfaces unused plugins so you can clean them up (v2.1.187+). Enable/disable also works when a plugin's `plugin.json` `name` differs from its marketplace entry name (v2.1.195+).
+
+### Listing installed plugins (v2.1.163)
+Confirm which plugins are active in the current session:
+```bash
+/plugin list             # all installed plugins
+/plugin list --enabled   # only enabled plugins
+/plugin list --disabled  # only disabled plugins
 ```
 
 ### Local Plugin (for development)
@@ -717,7 +910,7 @@ Claude Code can automatically update marketplaces and their installed plugins at
 When auto-update runs, Claude Code:
 1. Refreshes marketplace catalog
 2. Updates installed plugins to latest versions
-3. Shows notification prompting `/reload-plugins`
+3. Reports the outcome per plugin: `Plugin is now active.` when Claude Code activated it as part of the update, or `Run /reload-plugins to activate.` when it did not
 
 ### Environment Variables
 
@@ -725,6 +918,7 @@ When auto-update runs, Claude Code:
 |----------|--------|
 | `DISABLE_AUTOUPDATER=1` | Disable all auto-updates (Claude Code + plugins) |
 | `DISABLE_AUTOUPDATER=1` + `FORCE_AUTOUPDATE_PLUGINS=1` | Keep plugin updates, disable Claude Code updates |
+| `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` | (v2.1.141+) Force `claude plugin install` to clone GitHub plugin sources over HTTPS instead of SSH, even when an SSH remote is available. Use in CI runners or containers without SSH keys. |
 
 ```bash
 # Disable all auto-updates
@@ -733,7 +927,13 @@ export DISABLE_AUTOUPDATER=1
 # Keep plugin auto-updates only
 export DISABLE_AUTOUPDATER=1
 export FORCE_AUTOUPDATE_PLUGINS=1
+
+# CI runner without SSH keys — force HTTPS for plugin installs
+export CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1
+claude plugin install code-reviewer@anthropic
 ```
+
+> **Remote session plugin loading (v2.1.179)**: Plugin loading performance in remote sessions was improved in v2.1.179, so plugins become available faster when you connect to a remote session.
 
 ## When to Create a Plugin
 
@@ -808,6 +1008,18 @@ Administrators can control plugin behavior across an organization using managed 
 | `strictKnownMarketplaces` | Restrict which marketplaces users are allowed to add (managed-only; enforced on every plugin lifecycle event since v2.1.117) |
 | `blockedMarketplaces` | Blocklist of marketplaces; enforced on every plugin lifecycle event since v2.1.117; supports `hostPattern` / `pathPattern` regex fields since v2.1.119 |
 | `allowedChannelPlugins` | Control which plugins are permitted per release channel |
+| `disableCommandPluginSources` | Block the `command` plugin source type org-wide (v2.1.229+) |
+
+> **Friendlier aliases (v2.1.232)**: `additionalMarketplaces` is accepted as an alias for
+> `extraKnownMarketplaces`, and `allowedMarketplaces` for `strictKnownMarketplaces`.
+> **Changelog-sourced** — the v2.1.232 changelog announces them, but the official settings
+> reference does not yet list either name. The canonical keys are safe to keep using.
+
+> **Owner wildcards (v2.1.223+)**: a `"owner/*"` entry allows or blocks every marketplace
+> repo under one GitHub owner. **Accepted only in `strictKnownMarketplaces` and
+> `blockedMarketplaces`.** Everywhere else a `github` source appears — including
+> `extraKnownMarketplaces` and `/plugin marketplace add` — the `repo` value must name a
+> single repository.
 
 These settings can be applied at the organization level via managed configuration files and take precedence over user-level settings.
 
@@ -829,7 +1041,7 @@ This ensures that plugins cannot escalate privileges or modify the host environm
 2. Write `.claude-plugin/plugin.json` manifest
 3. Create `README.md` with documentation
 4. Test locally with `claude --plugin-dir ./my-plugin`
-5. Tag the release with `claude plugin tag v0.3.0` (v2.1.118+) — validates the version string and creates the matching git tag
+5. Tag the release with `claude plugin tag ./my-plugin` (v2.1.118+) — takes the plugin **path** and creates a `{name}--v{version}` git tag derived from `plugin.json`
 6. Submit to plugin marketplace
 7. Get reviewed and approved
 8. Published on marketplace
@@ -869,7 +1081,7 @@ Complete PR review workflow with security, testing, and documentation checks.
 ```
 
 ## Requirements
-- Claude Code 1.0+
+- Claude Code 2.1+
 - GitHub access
 - CodeQL (optional)
 ```
@@ -929,7 +1141,7 @@ Complete PR review workflow with security, testing, and documentation checks.
 
 2. **View plugin details:**
    ```bash
-   /plugin info plugin-name
+   claude plugin details plugin-name
    ```
 
 3. **Install a plugin:**
@@ -952,13 +1164,17 @@ Complete PR review workflow with security, testing, and documentation checks.
 ### Listing Installed Plugins
 
 ```bash
-/plugin list --installed
+/plugin list             # all installed plugins
+/plugin list --enabled   # only enabled plugins
+/plugin list --disabled  # only disabled plugins
 ```
 
 ### Updating a Plugin
 
+Use the CLI form — it is the one documented under [`plugin update`](https://code.claude.com/docs/en/plugins-reference) and the one Claude Code itself points you to when an update is available:
+
 ```bash
-/plugin update plugin-name
+claude plugin update plugin-name
 ```
 
 ### Disabling/Enabling a Plugin
@@ -1021,7 +1237,7 @@ The following Claude Code features work together with plugins:
 - Verify paths in `plugin.json` match actual directory structure
 - Check file permissions: `chmod +x scripts/`
 - Review component file syntax
-- Check logs: `/plugin debug plugin-name`
+- Check the component inventory: `claude plugin details plugin-name`
 
 ### MCP Connection Failed
 - Verify environment variables are set correctly
@@ -1030,9 +1246,9 @@ The following Claude Code features work together with plugins:
 - Review MCP configuration in `mcp/` directory
 
 ### Commands Not Available After Install
-- Ensure plugin was installed successfully: `/plugin list --installed`
-- Check if plugin is enabled: `/plugin status plugin-name`
-- Restart Claude Code: `exit` and reopen
+- Ensure plugin was installed successfully: `/plugin list`
+- Check if plugin is enabled: `/plugin list --enabled`
+- Check whether it's active yet — see the install summary guidance in [Installation Methods](#installation-methods): `Plugin is now active.` needs no action, `Run /reload-plugins to activate.` means run that command (a restart is not required)
 - Check for naming conflicts with existing commands
 
 ### Hook Execution Issues
@@ -1053,13 +1269,25 @@ The following Claude Code features work together with plugins:
 
 ---
 
-**Last Updated**: May 9, 2026
-**Claude Code Version**: 2.1.138
+**Last Updated**: September 6, 2026
+**Claude Code Version**: 2.1.263
 **Sources**:
 - https://code.claude.com/docs/en/plugins
+- https://code.claude.com/docs/en/plugins-reference
+- https://code.claude.com/docs/en/changelog#2-1-172
+- https://code.claude.com/docs/en/changelog
+- https://code.claude.com/docs/en/commands
 - https://code.claude.com/docs/en/plugin-marketplaces
+- https://code.claude.com/docs/en/discover-plugins.md
 - https://github.com/anthropics/claude-code/releases/tag/v2.1.117
 - https://github.com/anthropics/claude-code/releases/tag/v2.1.118
 - https://github.com/anthropics/claude-code/releases/tag/v2.1.131
 - https://github.com/anthropics/claude-code/releases/tag/v2.1.138
-**Compatible Models**: Claude Sonnet 4.6, Claude Opus 4.7, Claude Haiku 4.5
+- https://github.com/anthropics/claude-code/releases/tag/v2.1.139
+- https://github.com/anthropics/claude-code/releases/tag/v2.1.141
+- https://github.com/anthropics/claude-code/releases/tag/v2.1.142
+- https://github.com/anthropics/claude-code/releases/tag/v2.1.143
+- https://code.claude.com/docs/en/cli-reference
+- https://code.claude.com/docs/en/model-config
+- https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md
+**Compatible Models**: Claude Fable 5, Claude Opus 5, Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.8, Claude Haiku 4.5

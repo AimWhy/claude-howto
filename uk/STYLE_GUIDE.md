@@ -3,8 +3,8 @@
 <!-- i18n-date: 2026-04-09 -->
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="resources/logos/claude-howto-logo-dark.svg">
-  <img alt="Claude How To" src="resources/logos/claude-howto-logo.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="../resources/logos/claude-howto-logo-dark.svg">
+  <img alt="Claude How To" src="../resources/logos/claude-howto-logo.svg">
 </picture>
 
 # Гайд зі стилю
@@ -601,12 +601,13 @@ README уроків завершуються блоком метаданих:
 
 ```markdown
 ---
-**Last Updated**: March 2026
-**Claude Code Version**: 2.1.97
+**Last Updated**: August 2026
+**Claude Code Version**: 2.1.245
 **Compatible Models**: Claude Sonnet 4.6, Claude Opus 4.6, Claude Haiku 4.5
 ```
 
-- Використовуйте формат місяць + рік (напр., "March 2026")
+- Використовуйте формат місяць + рік (напр., "August 2026")
+- Використовуйте версію, зафіксовану поточним запуском синхронізації, а не значення, показане тут
 - Оновлюйте версію при зміні функцій
 - Перелічуйте всі сумісні моделі
 
@@ -634,4 +635,8 @@ README уроків завершуються блоком метаданих:
 - [ ] Повідомлення коміту відповідає формату conventional commits
 
 ---
-**Останнє оновлення**: Квітень 2026
+
+**Останнє оновлення**: 25 серпня 2026
+**Версія Claude Code**: 2.1.245
+**Джерела**:
+- https://code.claude.com/docs/en/overview
